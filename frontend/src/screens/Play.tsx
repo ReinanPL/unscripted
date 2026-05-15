@@ -20,6 +20,7 @@ import {
 import type { ActionEvent, CampaignStateResponse } from "../api/types";
 import { ActionInput } from "../components/ActionInput";
 import { Layout } from "../components/Layout";
+import { MasterThinking } from "../components/MasterThinking";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
@@ -159,11 +160,7 @@ export function Play() {
             </div>
           ) : null}
           <Narration turns={turns} thinking={streaming} />
-          {streaming ? (
-            <div className="play__thinking" aria-live="polite">
-              {t("play.masterThinking")}
-            </div>
-          ) : null}
+          {streaming ? <MasterThinking /> : null}
           <ActionInput
             value={input}
             onChange={setInput}

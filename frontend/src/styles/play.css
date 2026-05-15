@@ -33,12 +33,81 @@
   border-left-color: var(--c-bronze);
 }
 
-.play__thinking {
-  padding: var(--space-2) var(--space-5);
+.master-thinking {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-body);
   font-style: italic;
-  color: var(--c-text-faint);
   font-size: var(--fs-sm);
+  color: var(--c-text-faint);
   letter-spacing: 0.04em;
+  border-top: 1px solid var(--c-divider, var(--c-border));
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(184, 138, 60, 0.04) 100%
+  );
+}
+
+.master-thinking__text {
+  /* Espaço a mais antes dos pontos para deixar o ritmo respirar. */
+  padding-right: var(--space-1);
+}
+
+.master-thinking__dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.master-thinking__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-bronze-faint);
+  animation: master-thinking-pulse 1.4s ease-in-out infinite;
+}
+
+.master-thinking__dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.master-thinking__dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes master-thinking-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+    background: var(--c-bronze-faint);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+    background: var(--c-bronze-bright);
+  }
+}
+
+/* Respeita a preferência de reduzir movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .master-thinking__dot {
+    animation: master-thinking-fade 1.4s ease-in-out infinite;
+    transform: none;
+  }
+  @keyframes master-thinking-fade {
+    0%,
+    60%,
+    100% {
+      opacity: 0.3;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
 }
 
 /* === Narração === */
