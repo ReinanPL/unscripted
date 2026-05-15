@@ -33,6 +33,18 @@ docker compose up
 
 Backend: `http://localhost:8000` · Frontend: `http://localhost:5173`
 
+### Frontend dev (without Docker)
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+npm run lint
+npm run typecheck
+```
+
+The frontend proxies `/campaigns`, `/health` and `/voice` to the backend. Set `BACKEND_URL` to point at a non-default backend.
+
 ## Licensing
 
 - **Code** — Apache 2.0 (see [`LICENSE`](LICENSE))
