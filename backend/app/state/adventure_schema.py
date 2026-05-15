@@ -25,6 +25,19 @@ class Connection(BaseModel):
     description: str = ""
 
 
+class ScenePosition(BaseModel):
+    """Posição autoral da cena no grafo de locações (ADR-039).
+
+    Sistema de coordenadas lógico — o frontend escolhe o viewBox SVG final
+    e aplica preserveAspectRatio. Convenção: x ∈ [80, 720], y ∈ [80, 420]
+    com viewBox típico 800×500. Valores fora desse intervalo são aceitos
+    (o frontend ajusta), só não rendem o resultado mais agradável.
+    """
+
+    x: float
+    y: float
+
+
 class ImageBriefing(BaseModel):
     """Briefing escrito para gerar uma imagem fora do sistema (Nano Banana)."""
 
@@ -60,6 +73,7 @@ class Scene(BaseModel):
     read_aloud: str = ""
     present: list[str] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
+    position: ScenePosition | None = None
 
 
 class Chapter(BaseModel):

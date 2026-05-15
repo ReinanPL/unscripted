@@ -39,6 +39,7 @@ chapters:
     scenes:
       - id: taverna_interior
         name: Interior da Taverna do Javali Pálido
+        position: { x: 160, y: 250 }
         description: |
           A taverna é pequena, mal iluminada por velas grossas em apoios de
           ferro. O ar cheira a cera, cerveja morna e madeira úmida. Há cinco
@@ -60,6 +61,7 @@ chapters:
 
       - id: rua_da_praca
         name: Rua da Praça
+        position: { x: 340, y: 250 }
         description: |
           A rua principal de Marevale, com casas baixas de pedra e madeira.
           Há poucos transeuntes; os que existem evitam contato visual. Um
@@ -74,6 +76,7 @@ chapters:
 
       - id: cozinha_dos_fundos
         name: Cozinha dos Fundos
+        position: { x: 160, y: 100 }
         description: |
           Uma cozinha pequena com chaminé apagada e pratos limpos empilhados
           numa mesa de carvalho. Há uma porta dos fundos entreaberta que dá
@@ -85,6 +88,7 @@ chapters:
 
       - id: estrada_norte
         name: Estrada do Norte
+        position: { x: 520, y: 250 }
         description: |
           A estrada de terra batida sobe suavemente em direção a uma faixa
           de floresta densa. As pegadas no chão são poucas e antigas;
@@ -104,6 +108,7 @@ chapters:
 
       - id: clareira_dos_bandidos
         name: Clareira dos Bandidos
+        position: { x: 700, y: 250 }
         description: |
           A floresta se abre numa clareira de uns trinta passos de largura,
           atravessada pela estrada. Há marcas de fogueira no centro, uma
