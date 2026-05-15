@@ -263,7 +263,7 @@
   outline: none;
 }
 
-/* === Sheet (componente reutilizado em StatePanel) === */
+/* === Sheet (componente reutilizado no modal de ficha) === */
 
 .sheet {
   font-family: var(--font-body);

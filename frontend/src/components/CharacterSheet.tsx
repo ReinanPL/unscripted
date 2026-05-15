@@ -1,5 +1,5 @@
 /**
- * Prévia da ficha de personagem (uso em CreateCampaign e StatePanel).
+ * Prévia da ficha de personagem (uso em CreateCampaign e no modal).
  *
  * Apresentação: atributos com abreviação, HP em barra simples,
  * perícias e equipamento em listas. Sem nenhum asset gráfico, sem

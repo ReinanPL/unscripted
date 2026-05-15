@@ -23,6 +23,7 @@ import type {
   GraphResponse,
 } from "../api/types";
 import { ActionInput } from "../components/ActionInput";
+import { CharacterModal } from "../components/CharacterModal";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Layout } from "../components/Layout";
 import { LocationGraph } from "../components/LocationGraph";
@@ -31,7 +32,6 @@ import { MasterThoughtPanel } from "../components/MasterThoughtPanel";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { RobustnessBanner } from "../components/RobustnessBanner";
 import { SceneImage } from "../components/SceneImage";
-import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
 import { usePrevious } from "../state/usePrevious";
@@ -54,6 +54,7 @@ export function Play() {
   // Decisão da Fase 6: começa null mesmo após retomada — sem
   // navegação em traces históricos na v1.
   const [lastTurnNumber, setLastTurnNumber] = useState<number | null>(null);
+  const [showSheet, setShowSheet] = useState(false);
 
   // Pulso de dano (PRD §6.6) — quando HP cai entre dois turnos.
   const [damageFlash, setDamageFlash] = useState(false);
@@ -223,10 +224,9 @@ export function Play() {
   }
 
   return (
+    <>
     <Layout
-      state={
-        <StatePanel loading={bootstrapping} state={state} onExit={reset} />
-      }
+      onExit={reset}
       narration={
         <>
           {banner !== null ? (
@@ -280,9 +280,24 @@ export function Play() {
             />
           ) : null}
           <LocationGraph graph={graph} loading={bootstrapping} />
+          {/* Botão provisório — substituído pelo StatusCompact no próximo commit. */}
+          <button
+            type="button"
+            className="layout__exit"
+            onClick={() => setShowSheet(true)}
+            disabled={!state}
+          >
+            {t("state.openSheet")}
+          </button>
         </>
       }
     />
+    <CharacterModal
+      open={showSheet}
+      onClose={() => setShowSheet(false)}
+      state={state}
+    />
+    </>
   );
 }
 

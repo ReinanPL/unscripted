@@ -1,0 +1,145 @@
+/*
+ * Modal de ficha completa — overlay <dialog> nativo. Usa a mesma
+ * linguagem do scene-image (moldura em bronze, dupla borda) para que
+ * o jogador reconheça que faz parte do mesmo objeto editorial.
+ */
+
+.character-modal {
+  padding: 0;
+  margin: auto;
+  border: none;
+  background: transparent;
+  color: var(--c-text);
+  max-width: 720px;
+  width: calc(100% - var(--space-6));
+  max-height: 85vh;
+}
+
+.character-modal::backdrop {
+  background: rgba(8, 6, 4, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.character-modal__panel {
+  background: var(--c-bg-zone);
+  border: 1px solid var(--c-bronze);
+  /* Moldura dupla: contorno bronze externo + sombra interna em
+     pergaminho — vocabulário da scene-image. */
+  box-shadow:
+    inset 0 0 0 4px var(--c-bg-zone),
+    inset 0 0 0 5px rgba(184, 138, 60, 0.32),
+    0 24px 60px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.character-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--c-divider, var(--c-border));
+}
+
+.character-modal__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-text-accent);
+}
+
+.character-modal__close {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  padding: 0 var(--space-2);
+  background: transparent;
+  color: var(--c-text-faint);
+  border: none;
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+
+.character-modal__close:hover,
+.character-modal__close:focus-visible {
+  color: var(--c-bronze-bright);
+  outline: none;
+}
+
+.character-modal__body {
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.character-modal__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.character-modal__section-title {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.character-modal__location-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--c-text-accent);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.character-modal__location-desc {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+  color: var(--c-text-soft);
+  margin: 0;
+  font-style: italic;
+}
+
+.character-modal__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--c-text);
+}
+
+.character-modal__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid rgba(184, 138, 60, 0.08);
+}
+
+.character-modal__item:last-child {
+  border-bottom: none;
+}
+
+.character-modal__item-qty {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+
+.character-modal__empty {
+  font-style: italic;
+  color: var(--c-text-faint);
+  margin: 0;
+  font-size: var(--fs-sm);
+}

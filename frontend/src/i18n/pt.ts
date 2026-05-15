@@ -46,6 +46,7 @@ export const pt = {
   },
   state: {
     title: "Sua ficha",
+    openSheet: "Ver ficha",
     hpLabel: "PV",
     levelLabel: "Nível",
     attributesTitle: "Atributos",
