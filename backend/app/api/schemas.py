@@ -43,3 +43,9 @@ class CampaignStateResponse(BaseModel):
 class CampaignLogResponse(BaseModel):
     campaign_id: str
     history: list[HistoryEntry]
+
+
+class TurnTraceResponse(BaseModel):
+    campaign_id: str
+    turn_number: int
+    trace: dict  # type: ignore[type-arg]

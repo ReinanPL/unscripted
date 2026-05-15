@@ -18,8 +18,9 @@ from app.api.schemas import (
     CampaignCreateResponse,
     CampaignLogResponse,
     CampaignStateResponse,
+    TurnTraceResponse,
 )
-from app.db.base import CampaignRow
+from app.db.base import CampaignRow, TurnTraceRow
 from app.db.engine import get_db
 from app.runner import (
     CampaignNotFoundError,
@@ -176,3 +177,25 @@ async def get_log_endpoint(
     row = await _get_campaign_or_404(campaign_id, db)
     state = GameState.model_validate(row.game_state)
     return CampaignLogResponse(campaign_id=campaign_id, history=state.history)
+
+
+@router.get("/{campaign_id}/turn/{turn_number}/trace", response_model=TurnTraceResponse)
+async def get_turn_trace_endpoint(
+    campaign_id: str,
+    turn_number: int,
+    db: AsyncSession = Depends(get_db),
+) -> TurnTraceResponse:
+    await _get_campaign_or_404(campaign_id, db)
+    result = await db.execute(
+        select(TurnTraceRow)
+        .where(TurnTraceRow.campaign_id == campaign_id)
+        .where(TurnTraceRow.turn_number == turn_number)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Trace de turno não encontrado.")
+    return TurnTraceResponse(
+        campaign_id=campaign_id,
+        turn_number=turn_number,
+        trace=row.trace,
+    )
