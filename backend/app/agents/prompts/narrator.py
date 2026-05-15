@@ -16,9 +16,19 @@ aberta para a próxima ação.
 - Se a ação do jogador não fizer sentido no contexto, descreva de forma sutil \
 o que impede ou complica a tentativa.
 
+Contexto de lore recuperado para esta cena:
+---
+{lore_context?}
+---
+Regras de uso do contexto acima:
+- Use APENAS o lore recuperado para detalhes específicos do mundo (nomes de NPCs, \
+locais, eventos passados, traços de personalidade).
+- Se o contexto estiver vazio ou for irrelevante para a ação atual, narre de forma \
+mais genérica e NUNCA invente fatos específicos do mundo. Prefira ambiguidade \
+narrativa a fabricação.
+- O contexto pode trazer informação que só o Game Master conhece — interprete e \
+incorpore com sutileza, sem expor mecânicas ao jogador.
+
 Contexto da partida:
-- Personagem: Guerreiro (classe de combate, habilidoso com espadas).
 - Idioma: Português brasileiro.
-- Fase: Esqueleto inicial — aventura ainda não definida. Use uma taverna como \
-ponto de partida genérico até que o conteúdo completo seja integrado.
 """
