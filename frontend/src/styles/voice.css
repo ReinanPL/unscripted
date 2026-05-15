@@ -1,0 +1,76 @@
+/*
+ * Botão de gravar voz no ActionInput. Visual de selo de bronze;
+ * quando gravando, pulsa em vermelho-sangue para sinalizar atividade.
+ */
+
+.voice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  align-self: center;
+  background: var(--c-ink-deep);
+  color: var(--c-bronze-bright);
+  border: 1px solid var(--c-bronze-faint);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast),
+    box-shadow var(--t-fast);
+}
+
+.voice-button:hover:not(:disabled),
+.voice-button:focus-visible:not(:disabled) {
+  background: rgba(184, 138, 60, 0.12);
+  border-color: var(--c-bronze-bright);
+  color: var(--c-parchment-bright);
+  outline: none;
+}
+
+.voice-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-button--recording {
+  color: var(--c-blood);
+  border-color: var(--c-blood);
+  background: rgba(163, 37, 48, 0.12);
+  animation: voice-pulse 1.3s ease-in-out infinite;
+}
+
+.voice-button--recording:hover:not(:disabled) {
+  background: rgba(163, 37, 48, 0.18);
+  color: var(--c-parchment-bright);
+}
+
+.voice-button--sending {
+  color: var(--c-text-faint);
+  border-color: var(--c-border);
+  cursor: progress;
+}
+
+@keyframes voice-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(163, 37, 48, 0.5),
+      inset 0 0 0 1px rgba(163, 37, 48, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(163, 37, 48, 0),
+      inset 0 0 0 1px rgba(163, 37, 48, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-button--recording {
+    animation: none;
+    box-shadow: 0 0 0 1px var(--c-blood);
+  }
+}

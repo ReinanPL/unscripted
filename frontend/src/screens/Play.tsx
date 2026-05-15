@@ -253,6 +253,12 @@ export function Play() {
             onSubmit={handleSubmit}
             disabled={streaming || bootstrapping}
             focusKey={turns.length}
+            onVoiceUnavailable={() =>
+              setBanner({
+                kind: "error",
+                message: t("voice.notAvailable"),
+              })
+            }
           />
         </div>
       }

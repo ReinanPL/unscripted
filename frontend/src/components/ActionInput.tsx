@@ -6,11 +6,14 @@
  *   - Durante o turno (disabled), input fica em readonly visual.
  *   - O valor é controlado externamente — o pai (Play) preserva a
  *     entrada quando o backend falha (ADR-020).
+ *   - VoiceButton à esquerda quando o navegador suporta MediaRecorder.
+ *     Transcrição retornada concatena ao valor atual (não substitui).
  */
 
 import { useRef, useEffect } from "react";
 
 import { useT } from "../i18n";
+import { VoiceButton } from "./VoiceButton";
 
 interface ActionInputProps {
   value: string;
@@ -19,6 +22,8 @@ interface ActionInputProps {
   disabled?: boolean;
   /** Auto-focus após carregar a tela / depois de um done. */
   focusKey?: string | number;
+  /** Aviso opcional do pai quando a voz cai no stub vazio. */
+  onVoiceUnavailable?: () => void;
 }
 
 export function ActionInput({
@@ -27,6 +32,7 @@ export function ActionInput({
   onSubmit,
   disabled,
   focusKey,
+  onVoiceUnavailable,
 }: ActionInputProps) {
   const t = useT();
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -45,6 +51,12 @@ export function ActionInput({
     }
   }
 
+  function handleTranscript(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    onChange(value ? `${value} ${trimmed}`.trim() : trimmed);
+  }
+
   return (
     <form
       className="action-input"
@@ -53,6 +65,11 @@ export function ActionInput({
         if (!disabled && value.trim().length > 0) onSubmit();
       }}
     >
+      <VoiceButton
+        onTranscript={handleTranscript}
+        onUnavailable={onVoiceUnavailable}
+        disabled={disabled}
+      />
       <textarea
         ref={ref}
         className="action-input__field"
