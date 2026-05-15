@@ -1,0 +1,130 @@
+/*
+ * Tela inicial. Identidade temática: tipografia serifada, pergaminho
+ * sobre couro, ornamentos discretos. Não deve parecer uma landing
+ * de SaaS — é o limiar de uma taverna.
+ */
+
+.landing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--space-6) var(--space-5);
+  background:
+    radial-gradient(
+      ellipse at center top,
+      rgba(184, 138, 60, 0.06) 0%,
+      transparent 70%
+    ),
+    var(--c-bg);
+}
+
+.landing__frame {
+  width: 100%;
+  max-width: 640px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--c-bg-zone);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: var(--shadow-high), var(--shadow-inset);
+  position: relative;
+  text-align: center;
+}
+
+.landing__frame::before,
+.landing__frame::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--c-bronze-faint) 20%,
+    var(--c-bronze) 50%,
+    var(--c-bronze-faint) 80%,
+    transparent 100%
+  );
+}
+
+.landing__frame::before {
+  top: var(--space-4);
+}
+
+.landing__frame::after {
+  bottom: var(--space-4);
+}
+
+.landing__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--space-4);
+  color: var(--c-text-accent);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.landing__intro {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-loose);
+  color: var(--c-text-soft);
+  margin: 0 auto var(--space-6);
+  max-width: 36ch;
+  font-style: italic;
+}
+
+.landing__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.landing__action {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-5);
+  background: transparent;
+  color: var(--c-text);
+  border: 1px solid var(--c-border-strong);
+  cursor: pointer;
+  transition:
+    border-color var(--t-mid),
+    background var(--t-mid),
+    color var(--t-mid),
+    box-shadow var(--t-mid);
+}
+
+.landing__action:hover:not(:disabled),
+.landing__action:focus-visible:not(:disabled) {
+  border-color: var(--c-bronze-bright);
+  background: rgba(184, 138, 60, 0.08);
+  color: var(--c-parchment-bright);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(184, 138, 60, 0.25);
+}
+
+.landing__action--primary {
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.18) 0%,
+    rgba(184, 138, 60, 0.08) 100%
+  );
+  color: var(--c-parchment-bright);
+  border-color: var(--c-bronze);
+}
+
+.landing__action--primary:hover:not(:disabled),
+.landing__action--primary:focus-visible:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.32) 0%,
+    rgba(184, 138, 60, 0.18) 100%
+  );
+  border-color: var(--c-bronze-bright);
+}
