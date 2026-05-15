@@ -2,6 +2,7 @@ import { Layout } from "./components/Layout";
 import { useT } from "./i18n";
 import { CreateCampaign } from "./screens/CreateCampaign";
 import { Landing } from "./screens/Landing";
+import { Play } from "./screens/Play";
 import { ResumeCampaign } from "./screens/ResumeCampaign";
 import { useSession } from "./state/session";
 import { SessionProvider } from "./state/SessionContext";
@@ -25,6 +26,9 @@ function Router() {
   }
   if (screen === "resume") {
     return <Layout variant="single" narration={<ResumeCampaign />} />;
+  }
+  if (screen === "play") {
+    return <Play />;
   }
 
   return <Placeholder screen={screen} />;

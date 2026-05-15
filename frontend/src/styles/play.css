@@ -1,0 +1,270 @@
+/*
+ * Tela de jogo: narração ao centro, painéis nas laterais. O ritmo
+ * editorial do texto importa mais que decoração — tipografia
+ * serifada, contraste alto entre ação do jogador e narração do
+ * mestre.
+ */
+
+.play {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.play__banner {
+  margin: var(--space-3) var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+
+.play__banner--robustness {
+  color: var(--c-blood);
+  background: rgba(163, 37, 48, 0.1);
+  border-left-color: var(--c-blood);
+}
+
+.play__banner--error {
+  color: var(--c-bronze-bright);
+  background: rgba(184, 138, 60, 0.06);
+  border-left-color: var(--c-bronze);
+}
+
+.play__thinking {
+  padding: var(--space-2) var(--space-5);
+  font-style: italic;
+  color: var(--c-text-faint);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.04em;
+}
+
+/* === Narração === */
+
+.narration {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  scroll-behavior: smooth;
+}
+
+.narration__empty {
+  color: var(--c-text-faint);
+  font-style: italic;
+  margin: auto;
+  text-align: center;
+}
+
+.narration__turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-divider, var(--c-border));
+}
+
+.narration__turn:last-child {
+  border-bottom: none;
+}
+
+.narration__player {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--c-bronze-bright);
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--c-bronze-faint);
+  line-height: var(--lh-base);
+}
+
+.narration__master {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-loose);
+  color: var(--c-text);
+  margin: 0;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.narration__cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 2px;
+  background: var(--c-bronze-bright);
+  vertical-align: text-bottom;
+  animation: narration-cursor 1s steps(2) infinite;
+}
+
+@keyframes narration-cursor {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.narration__npc {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(184, 138, 60, 0.05);
+  border-left: 2px solid var(--c-bronze-faint);
+}
+
+.narration__npc-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+  margin-bottom: var(--space-1);
+}
+
+.narration__npc-text {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--c-parchment);
+  margin: 0;
+  line-height: var(--lh-base);
+}
+
+/* === Input do jogador === */
+
+.action-input {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-zone);
+}
+
+.action-input__field {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+  color: var(--c-text);
+  background: var(--c-ink-deep);
+  border: 1px solid var(--c-border);
+  padding: var(--space-3) var(--space-4);
+  resize: vertical;
+  min-height: 60px;
+  max-height: 200px;
+  transition: border-color var(--t-fast);
+}
+
+.action-input__field:focus {
+  outline: none;
+  border-color: var(--c-bronze-faint);
+}
+
+.action-input__field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-input__field::placeholder {
+  color: var(--c-text-faint);
+  font-style: italic;
+}
+
+.action-input__submit {
+  align-self: stretch;
+  min-width: 120px;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 var(--space-5);
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.22) 0%,
+    rgba(184, 138, 60, 0.1) 100%
+  );
+  color: var(--c-parchment-bright);
+  border: 1px solid var(--c-bronze);
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast);
+}
+
+.action-input__submit:hover:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.38) 0%,
+    rgba(184, 138, 60, 0.18) 100%
+  );
+  border-color: var(--c-bronze-bright);
+}
+
+.action-input__submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* === Placeholders dos painéis (substituídos nas próximas tarefas) === */
+
+.state-panel-placeholder,
+.scene-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.state-panel-placeholder__title,
+.scene-placeholder__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-text-accent);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--c-divider, var(--c-border));
+}
+
+.state-panel-placeholder__loading,
+.scene-placeholder__hint {
+  font-style: italic;
+  color: var(--c-text-faint);
+  margin: 0;
+}
+
+.state-panel-placeholder__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--c-text-soft);
+}
+
+.state-panel-placeholder__exit {
+  margin-top: auto;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--c-text-faint);
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.state-panel-placeholder__exit:hover {
+  color: var(--c-text);
+  border-color: var(--c-border-strong);
+}
