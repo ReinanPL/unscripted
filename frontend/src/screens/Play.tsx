@@ -1,25 +1,28 @@
 /**
  * Tela de jogo. Orquestra:
- *   - carregamento do log e do estado iniciais
+ *   - carregamento do log, do estado e do grafo iniciais
  *   - envio da ação (POST /campaigns/{id}/action) com streaming SSE
  *   - preservação do input em caso de erro/recusa (ADR-020)
  *   - exibição do estado, do grafo e do painel de pensamento do mestre
- *
- * Painéis ainda em construção: state, scene/graph e trace recebem
- * placeholders nas próximas tarefas (6.11, 6.12, 6.13).
  */
 
 import { useEffect, useState } from "react";
 
 import {
+  getCampaignGraph,
   getCampaignLog,
   getCampaignState,
   isNetworkError,
   streamAction,
 } from "../api";
-import type { ActionEvent, CampaignStateResponse } from "../api/types";
+import type {
+  ActionEvent,
+  CampaignStateResponse,
+  GraphResponse,
+} from "../api/types";
 import { ActionInput } from "../components/ActionInput";
 import { Layout } from "../components/Layout";
+import { LocationGraph } from "../components/LocationGraph";
 import { MasterThinking } from "../components/MasterThinking";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { StatePanel } from "../components/StatePanel";
@@ -39,21 +42,24 @@ export function Play() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<ErrorBanner | null>(null);
   const [state, setState] = useState<CampaignStateResponse | null>(null);
+  const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [bootstrapping, setBootstrapping] = useState(true);
 
-  // Bootstrap: carrega state + log na entrada.
+  // Bootstrap: carrega state + log + graph na entrada.
   useEffect(() => {
     if (!campaignId) return;
     let cancelled = false;
 
     async function bootstrap(id: string) {
       try {
-        const [s, l] = await Promise.all([
+        const [s, l, g] = await Promise.all([
           getCampaignState(id),
           getCampaignLog(id),
+          getCampaignGraph(id),
         ]);
         if (cancelled) return;
         setState(s);
+        setGraph(g);
         setTurns(
           l.history.map(
             (entry): NarrationTurn => ({
@@ -118,10 +124,14 @@ export function Play() {
       });
     } finally {
       setStreaming(false);
-      // Após done: recarrega state para refletir mutações deterministicas.
+      // Após done: recarrega state e graph para refletir mutações
+      // deterministicas (location nova, locations_revealed expandido).
       if (consumed && campaignId) {
         getCampaignState(campaignId)
           .then(setState)
+          .catch(() => undefined);
+        getCampaignGraph(campaignId)
+          .then(setGraph)
           .catch(() => undefined);
       }
     }
@@ -167,7 +177,7 @@ export function Play() {
           />
         </div>
       }
-      scene={<ScenePlaceholder />}
+      scene={<LocationGraph graph={graph} loading={bootstrapping} />}
     />
   );
 }
@@ -268,14 +278,3 @@ function updateLast<T>(arr: T[], updater: (item: T) => T): T[] {
   return copy;
 }
 
-// Placeholder da zona de cena — substituído no próximo commit (6.12 grafo).
-
-function ScenePlaceholder() {
-  const t = useT();
-  return (
-    <div className="scene-placeholder">
-      <h2 className="scene-placeholder__title">{t("graph.title")}</h2>
-      <p className="scene-placeholder__hint">{t("graph.empty")}</p>
-    </div>
-  );
-}
