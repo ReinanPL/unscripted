@@ -1,0 +1,130 @@
+id: aventura-01
+title: O Eco da Estrada do Norte
+language: pt
+chapters:
+  - id: chap-01
+    title: Capítulo 1 — A Taverna do Javali Pálido
+    premise: |
+      O herói chega à vila de Marevale, em rota para o reino do norte, e logo
+      descobre que a estrada que leva adiante foi tomada por bandidos. Para
+      seguir viagem, precisará lidar com a ameaça — sozinho, ou em aliança
+      com alguém local.
+    background: |
+      A vila vive em silêncio assustado. O xerife morreu há duas semanas em
+      uma emboscada na estrada, e desde então ninguém quis assumir o posto.
+      Os bandidos são liderados por um ex-soldado da guarda real, Joren
+      "Lâmina de Junho", expulso por crimes nunca esclarecidos.
+      O velho Grimwald, dono da Taverna do Javali Pálido, sabe quem são os
+      bandidos — alguns são desertores conhecidos. Ele também tem motivo
+      pessoal para não querer envolvimento direto: seu filho está com eles.
+    starting_scene: taverna_interior
+    progress_condition: |
+      O jogador obtém informação suficiente sobre os bandidos (nomes, número,
+      local provável do acampamento) para tomar uma decisão sobre como
+      enfrentar a estrada.
+    hook_next: |
+      Com informações em mãos, o jogador parte pela estrada do norte ao
+      amanhecer — a próxima cena se passa na clareira onde os bandidos
+      costumam emboscar viajantes.
+    scenes:
+      - id: taverna_interior
+        name: Interior da Taverna do Javali Pálido
+        description: |
+          A taverna é pequena, mal iluminada por velas grossas em apoios de
+          ferro. O ar cheira a cera, cerveja morna e madeira úmida. Há cinco
+          mesas, três delas vazias. Grimwald, um homem grande de barba grisalha
+          e olhar atento, lava canecas atrás do balcão sem dizer nada quando o
+          herói entra.
+        read_aloud: |
+          Você empurra a porta pesada da taverna. Lá dentro, o silêncio é mais
+          ruidoso que conversa: os poucos clientes baixam os olhos para suas
+          canecas quando você passa. Atrás do balcão, um homem grande de
+          barba grisalha lava louças sem pressa — e sem olhar para você.
+        present:
+          - grimwald
+        connections:
+          - to: rua_da_praca
+            description: Saída pela porta principal, de volta à rua da praça da vila.
+          - to: cozinha_dos_fundos
+            description: Porta de fundos atrás do balcão, leva à cozinha.
+
+      - id: rua_da_praca
+        name: Rua da Praça
+        description: |
+          A rua principal de Marevale, com casas baixas de pedra e madeira.
+          Há poucos transeuntes; os que existem evitam contato visual. Um
+          aviso pregado num poste oferece recompensa por informações sobre
+          bandidos da estrada do norte.
+        connections:
+          - to: taverna_interior
+            description: Entrada da Taverna do Javali Pálido.
+
+      - id: cozinha_dos_fundos
+        name: Cozinha dos Fundos
+        description: |
+          Uma cozinha pequena com chaminé apagada e pratos limpos empilhados
+          numa mesa de carvalho. Há uma porta dos fundos entreaberta que dá
+          para o pátio. Sobre a mesa, um bilhete dobrado tem um símbolo
+          rabiscado a carvão — uma lâmina cortando um ramo.
+        connections:
+          - to: taverna_interior
+            description: Volta para o salão da taverna.
+
+    npcs:
+      - name: Grimwald
+        personality: |
+          Cauteloso, taciturno, observador. Fala pouco e com peso. Mede o
+          interlocutor antes de responder; não cede informação sem motivo.
+        motivation: |
+          Proteger a vila — e proteger seu filho, que está entre os bandidos.
+          Esses dois objetivos hoje estão em conflito, e isso o consome em
+          silêncio.
+        knowledge: |
+          Sabe quem são os bandidos da estrada do norte por nome (Joren, seu
+          próprio filho Caelan, e mais três). Sabe onde fica o acampamento —
+          numa clareira a cerca de três horas a pé pela estrada. Sabe que
+          Joren foi guarda real e foi expulso.
+        hidden_state:
+          trait: |
+            Antigo soldado da guarda real (aposentado há vinte anos),
+            percepção alta. Notará rapidamente armas escondidas, intenção
+            hostil, ou mentiras pouco trabalhadas.
+          notes: |
+            Não revela seu próprio passado militar sem provocação direta.
+            Não revela que Caelan é seu filho a menos que seja convencido
+            (DC 20 em Persuasão com abordagem genuína, ou descoberta indireta).
+
+    encounters:
+      - id: conversar_com_grimwald
+        kind: social
+        trigger: |
+          Quando o jogador aborda Grimwald no balcão ou tenta puxar conversa.
+        description: |
+          Grimwald responde com cortesia mínima. Para extrair informação útil
+          sobre os bandidos, o jogador precisa demonstrar discrição
+          (Persuasão DC 15 se a abordagem é direta e respeitosa; Persuasão
+          DC 20 se o jogador pressiona muito ou tenta intimidar).
+        consequences_success: |
+          Grimwald revela: o líder é Joren "Lâmina de Junho", ex-guarda real.
+          O acampamento fica numa clareira a três horas a pé pela estrada do
+          norte. Há cinco bandidos no total.
+        consequences_failure: |
+          Grimwald fecha-se completamente e devolve o copo do herói pelo
+          balcão. "A casa vai pagar essa. Boa noite." A vila inteira ficará
+          mais difícil de abordar — perde 1 nível de confiança local.
+
+    image_briefings:
+      - id: img-taverna-interior
+        scene: taverna_interior
+        description: |
+          Interior de taverna pequena, à noite, iluminada por velas grossas
+          em apoios de ferro. Um homem grande de barba grisalha lava louças
+          atrás de um balcão de madeira escura. Mesas vazias, clientes
+          esparsos olhando para baixo.
+        atmosphere: Silêncio pesado, tensão contida, fumaça baixa.
+        style: Pintura digital com paleta escura, contraste alto entre velas e sombra.
+        elements:
+          - balcão de madeira lustrada
+          - chaminé apagada ao fundo
+          - velas em ferro
+          - botas pesadas penduradas perto da porta
