@@ -82,7 +82,8 @@ export function StatusCompact({
         className="status-compact__sheet-btn"
         onClick={onOpenSheet}
       >
-        {t("state.openSheet")}
+        <span>{t("state.openSheet")}</span>
+        <kbd className="status-compact__kbd">{t("state.openSheetHint")}</kbd>
       </button>
     </aside>
   );

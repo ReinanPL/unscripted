@@ -57,6 +57,26 @@ export function Play() {
   const [lastTurnNumber, setLastTurnNumber] = useState<number | null>(null);
   const [showSheet, setShowSheet] = useState(false);
 
+  // Atalho global: tecla "C" alterna o modal da ficha. Ignora quando
+  // o foco está num input/textarea (jogador digitando ação) ou quando
+  // há modificador (Ctrl+C, Cmd+C continuam funcionando).
+  useEffect(() => {
+    function handler(ev: KeyboardEvent) {
+      if (ev.key.toLowerCase() !== "c") return;
+      if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      const active = document.activeElement;
+      if (active) {
+        const tag = active.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        if ((active as HTMLElement).isContentEditable) return;
+      }
+      ev.preventDefault();
+      setShowSheet((v) => !v);
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Pulso de dano (PRD §6.6) — quando HP cai entre dois turnos.
   const [damageFlash, setDamageFlash] = useState(false);
   const prevHp = usePrevious(state?.character.hp_current ?? null);

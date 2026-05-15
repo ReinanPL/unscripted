@@ -106,6 +106,10 @@
 }
 
 .status-compact__sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   font-family: var(--font-display);
   font-size: var(--fs-xs);
   letter-spacing: 0.16em;
@@ -119,6 +123,18 @@
     color var(--t-fast),
     border-color var(--t-fast),
     background var(--t-fast);
+}
+
+.status-compact__kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--c-bronze-faint);
+  color: var(--c-text-soft);
+  background: rgba(184, 138, 60, 0.05);
+  line-height: 1.4;
 }
 
 .status-compact__sheet-btn:hover,
