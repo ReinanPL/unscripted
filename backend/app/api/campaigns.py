@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.robustness import validate_player_input
+from app.api.graph import build_graph_response
 from app.api.schemas import (
     ActionEvent,
     ActionRequest,
@@ -18,6 +19,7 @@ from app.api.schemas import (
     CampaignCreateResponse,
     CampaignLogResponse,
     CampaignStateResponse,
+    GraphResponse,
     TurnTraceResponse,
 )
 from app.db.base import CampaignRow, TurnTraceRow
@@ -177,6 +179,32 @@ async def get_log_endpoint(
     row = await _get_campaign_or_404(campaign_id, db)
     state = GameState.model_validate(row.game_state)
     return CampaignLogResponse(campaign_id=campaign_id, history=state.history)
+
+
+@router.get("/{campaign_id}/graph", response_model=GraphResponse)
+async def get_graph_endpoint(
+    campaign_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> GraphResponse:
+    """Subgrafo revelado de locações para o jogador (ADR-038).
+
+    Filtra por `flags.locations_revealed`; nenhum nó ou aresta de cena
+    não-revelada aparece no resultado.
+    """
+    row = await _get_campaign_or_404(campaign_id, db)
+    state = GameState.model_validate(row.game_state)
+    chapter = get_active_chapter()
+    if chapter is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Nenhum capítulo ativo carregado no servidor.",
+        )
+    return build_graph_response(
+        chapter,
+        campaign_id=campaign_id,
+        locations_revealed=list(state.flags.locations_revealed),
+        current_location=state.location.id,
+    )
 
 
 @router.get("/{campaign_id}/turn/{turn_number}/trace", response_model=TurnTraceResponse)

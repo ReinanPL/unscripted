@@ -49,3 +49,33 @@ class TurnTraceResponse(BaseModel):
     campaign_id: str
     turn_number: int
     trace: dict  # type: ignore[type-arg]
+
+
+class GraphNodePosition(BaseModel):
+    x: float
+    y: float
+
+
+class GraphNode(BaseModel):
+    id: str
+    name: str
+    position: GraphNodePosition
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+
+
+class GraphResponse(BaseModel):
+    """Subgrafo revelado de locações ao jogador (ADR-038).
+
+    Contém apenas nós cujos ids estão em `flags.locations_revealed`
+    (mais a `current_location` por defesa em profundidade). Estado oculto
+    nunca trafega aqui.
+    """
+
+    campaign_id: str
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    current: str

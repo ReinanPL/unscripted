@@ -96,8 +96,8 @@ export interface GraphNode {
 }
 
 export interface GraphEdge {
-  from: string;
-  to: string;
+  source: string;
+  target: string;
 }
 
 export interface GraphResponse {
