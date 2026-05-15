@@ -27,7 +27,7 @@ from app.state.models import Character, GameState, HiddenState, HistoryEntry, Lo
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
-_CHARACTERS_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "content" / "characters"
+_CHARACTERS_DIR = pathlib.Path(__file__).parent.parent.parent / "content" / "characters"
 
 
 def _load_character_yaml(character: str) -> dict:  # type: ignore[type-arg]
