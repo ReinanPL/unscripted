@@ -6,11 +6,11 @@ from collections.abc import AsyncGenerator
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.robustness import RobustnessVerdict
+from app.agents.robustness import validate_player_input
 from app.api.schemas import (
     ActionEvent,
     ActionRequest,
@@ -81,16 +81,27 @@ async def create_campaign_endpoint(
     return CampaignCreateResponse(campaign_id=row.id)
 
 
-@router.post("/{campaign_id}/action")
+@router.post("/{campaign_id}/action", response_model=None)
 async def action_endpoint(
     campaign_id: str,
     body: ActionRequest,
     db: AsyncSession = Depends(get_db),
-) -> StreamingResponse:
+) -> StreamingResponse | JSONResponse:
     await _get_campaign_or_404(campaign_id, db)
 
-    # Robustness é Step 10 — por ora, todo input chega como ok.
-    verdict = RobustnessVerdict(ok=True)
+    # ADR-026: heurística determinística barra ações abusivas, declarações
+    # de resultado e conteúdo proibido antes de qualquer LLM.
+    verdict = validate_player_input(body.text)
+    if not verdict.ok:
+        return JSONResponse(
+            status_code=200,
+            content=ActionEvent(
+                type="rejected",
+                text=verdict.reason,
+                category=verdict.category,
+            ).model_dump(),
+        )
+
     settings = get_settings_cached()
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
