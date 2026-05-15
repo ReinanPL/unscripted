@@ -1,4 +1,3 @@
-import logging
 import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -13,8 +12,6 @@ from app.providers import get_embedding_provider, get_llm_provider
 from app.rag.ingest import ingest_all
 from app.runner import init_runner
 
-logger = logging.getLogger(__name__)
-
 CONTENT_ROOT = pathlib.Path("/app/content")
 
 
@@ -26,7 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_runner(llm_provider, settings, embedder)
     async with _async_session_factory() as session:
         report = await ingest_all(session, CONTENT_ROOT, embedder)
-    logger.info(report.summary())
+    print(report.summary(), flush=True)
     yield
 
 

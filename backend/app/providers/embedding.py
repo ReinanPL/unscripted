@@ -46,7 +46,11 @@ class LocalSentenceTransformersProvider:
             from sentence_transformers import SentenceTransformer
 
             self._model = SentenceTransformer(self._model_name)
-            actual_dim = int(self._model.get_sentence_embedding_dimension() or 0)
+            get_dim = (
+                getattr(self._model, "get_embedding_dimension", None)
+                or self._model.get_sentence_embedding_dimension
+            )
+            actual_dim = int(get_dim() or 0)
             if actual_dim != self._expected_dim:
                 raise RuntimeError(
                     f"Dimensão do modelo '{self._model_name}' é {actual_dim}, "
