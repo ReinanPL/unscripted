@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     postgres_host: str = "postgres"
     postgres_port: int = 5432
 
+    voice_provider: Literal["stub"] = "stub"
+
     @property
     def database_url(self) -> str:
         return (

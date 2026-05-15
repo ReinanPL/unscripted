@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.campaigns import router as campaigns_router
+from app.api.voice import router as voice_router
 from app.config import get_settings
 from app.db.engine import _async_session_factory
 from app.providers import get_embedding_provider, get_llm_provider
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(campaigns_router)
+app.include_router(voice_router)
 
 
 @app.get("/health")
