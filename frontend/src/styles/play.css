@@ -5,27 +5,6 @@
  * mestre.
  */
 
-.play__banner {
-  margin: var(--space-3) var(--space-5) 0;
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid;
-  font-family: var(--font-body);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-base);
-}
-
-.play__banner--robustness {
-  color: var(--c-blood);
-  background: rgba(163, 37, 48, 0.1);
-  border-left-color: var(--c-blood);
-}
-
-.play__banner--error {
-  color: var(--c-bronze-bright);
-  background: rgba(184, 138, 60, 0.06);
-  border-left-color: var(--c-bronze);
-}
-
 .master-thinking {
   display: flex;
   align-items: baseline;
@@ -109,7 +88,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -129,6 +108,12 @@
   gap: var(--space-3);
   padding-bottom: var(--space-5);
   position: relative;
+  /* Centra cada turno no espaço amplo: o texto tem max-width 65ch,
+     mas o bloco do turno fica visualmente centralizado em vez de
+     colado à esquerda. */
+  width: 100%;
+  max-width: 68ch;
+  margin: 0 auto;
 }
 
 /* Ornamento entre turnos — pequeno losango em bronze centrado sobre
@@ -259,7 +244,7 @@
 .action-input {
   display: flex;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--c-border);
   background: var(--c-bg-zone);
 }
