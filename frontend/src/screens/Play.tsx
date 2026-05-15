@@ -30,6 +30,7 @@ import { MasterThinking } from "../components/MasterThinking";
 import { MasterThoughtPanel } from "../components/MasterThoughtPanel";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { RobustnessBanner } from "../components/RobustnessBanner";
+import { SceneImage } from "../components/SceneImage";
 import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
@@ -262,7 +263,18 @@ export function Play() {
           />
         </div>
       }
-      scene={<LocationGraph graph={graph} loading={bootstrapping} />}
+      scene={
+        <>
+          {state ? (
+            <SceneImage
+              chapterDir="01"
+              imageId={`img-${state.location.id.replace(/_/g, "-")}`}
+              sceneName={state.location.name}
+            />
+          ) : null}
+          <LocationGraph graph={graph} loading={bootstrapping} />
+        </>
+      }
     />
     <MasterThoughtPanel
       campaignId={campaignId}
