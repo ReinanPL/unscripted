@@ -1,0 +1,92 @@
+/*
+ * Texturas e ornamentos discretos da identidade visual.
+ *
+ * Tudo CSS — zero asset de imagem. Texturas vêm de:
+ *   1. Gradients muito sutis para simular variação de superfície (couro).
+ *   2. Noise SVG inline em data URI para granulação fina.
+ *   3. Pseudo-elementos para ornamentos de canto (cantoneiras douradas).
+ *
+ * Ficam aqui as regras puramente decorativas — separadas do layout e
+ * dos tokens (theme.css) para que evolução visual não brigue com
+ * grade ou paleta.
+ */
+
+/* Granulação noise SVG aplicada no fundo do app para tirar a sensação
+   de "tela plana digital". Opacidade muito baixa; some quase, mas
+   muda o caráter. */
+body {
+  background-image:
+    radial-gradient(
+      ellipse at top,
+      rgba(184, 138, 60, 0.04) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at bottom,
+      rgba(0, 0, 0, 0.25) 0%,
+      transparent 70%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.44  0 0 0 0 0.28  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-blend-mode: normal, normal, overlay;
+  background-attachment: fixed;
+}
+
+/* Cantoneiras douradas discretas em molduras (landing, saved-id,
+   resume). Servem como sinalização: "isto não é um modal genérico,
+   é uma página de um livro velho". */
+.landing__frame,
+.saved-id,
+.resume {
+  position: relative;
+}
+
+.landing__frame::after,
+.saved-id::after,
+.resume::after {
+  content: none;
+}
+
+.landing__frame .corner,
+.saved-id .corner,
+.resume .corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--c-bronze);
+  opacity: 0.7;
+}
+
+/* Texto serifado com kerning levemente mais aberto para evocar
+   impressão antiga, sem prejudicar legibilidade. */
+body {
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+h1,
+h2,
+h3,
+h4,
+.landing__title,
+.create__title,
+.create__card-class,
+.resume__title,
+.saved-id__heading {
+  font-feature-settings: "smcp" 0, "kern" 1, "liga" 1;
+}
+
+/* Itálicos em EB Garamond têm uma graça particular — destacamos
+   instruções/intro com peso editorial. */
+em,
+.landing__intro,
+.create__subtitle,
+.resume__subtitle,
+.saved-id__hint {
+  font-feature-settings: "ital" 1, "kern" 1;
+}
+
+/* Selection: sangue escuro sobre dourado claro — coerente com a paleta
+   e legível. */
+::selection {
+  background: rgba(163, 37, 48, 0.4);
+  color: var(--c-parchment-bright);
+}
