@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, String, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -15,7 +15,7 @@ class CampaignRow(Base):
     __tablename__ = "campaigns"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), primary_key=True, server_default=text("gen_random_uuid()")
+        String(36), primary_key=True, server_default=text("gen_random_uuid()")
     )
     character_class: Mapped[str] = mapped_column(String(50), nullable=False)
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="pt")
