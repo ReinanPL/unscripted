@@ -1,0 +1,131 @@
+/*
+ * Tela de retomada por ID anônimo. Mesma linguagem visual da landing
+ * e da criação — campo único, peso editorial.
+ */
+
+.resume {
+  width: 100%;
+  max-width: 520px;
+  margin: var(--space-7) auto;
+  padding: var(--space-6) var(--space-5);
+  background: var(--c-bg-zone);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: var(--shadow-high), var(--shadow-inset);
+}
+
+.resume__header {
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+
+.resume__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  letter-spacing: 0.06em;
+  color: var(--c-text-accent);
+  margin: 0 0 var(--space-2);
+}
+
+.resume__subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--c-text-soft);
+  margin: 0;
+}
+
+.resume__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.resume__label {
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.resume__input {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--c-ink-deepest);
+  color: var(--c-bronze-bright);
+  border: 1px solid var(--c-border-strong);
+  letter-spacing: 0.04em;
+  transition: border-color var(--t-fast);
+}
+
+.resume__input:focus {
+  outline: none;
+  border-color: var(--c-bronze-bright);
+}
+
+.resume__error {
+  color: var(--c-blood);
+  background: rgba(163, 37, 48, 0.08);
+  border: 1px solid var(--c-blood-deep);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.resume__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.resume__back,
+.resume__submit {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast);
+}
+
+.resume__back {
+  background: transparent;
+  color: var(--c-text-soft);
+  border: 1px solid transparent;
+}
+
+.resume__back:hover:not(:disabled) {
+  color: var(--c-text);
+  border-color: var(--c-border);
+}
+
+.resume__submit {
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.22) 0%,
+    rgba(184, 138, 60, 0.1) 100%
+  );
+  color: var(--c-parchment-bright);
+  border: 1px solid var(--c-bronze);
+}
+
+.resume__submit:hover:not(:disabled),
+.resume__submit:focus-visible:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    rgba(184, 138, 60, 0.38) 0%,
+    rgba(184, 138, 60, 0.18) 100%
+  );
+  border-color: var(--c-bronze-bright);
+  outline: none;
+}
+
+.resume__back:disabled,
+.resume__submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -2,6 +2,7 @@ import { Layout } from "./components/Layout";
 import { useT } from "./i18n";
 import { CreateCampaign } from "./screens/CreateCampaign";
 import { Landing } from "./screens/Landing";
+import { ResumeCampaign } from "./screens/ResumeCampaign";
 import { useSession } from "./state/session";
 import { SessionProvider } from "./state/SessionContext";
 
@@ -21,6 +22,9 @@ function Router() {
   }
   if (screen === "create") {
     return <Layout variant="single" narration={<CreateCampaign />} />;
+  }
+  if (screen === "resume") {
+    return <Layout variant="single" narration={<ResumeCampaign />} />;
   }
 
   return <Placeholder screen={screen} />;
