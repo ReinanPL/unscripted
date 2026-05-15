@@ -1,8 +1,11 @@
+import { useT } from "./i18n";
+
 export function App() {
+  const t = useT();
   return (
     <main>
-      <h1>Unscripted</h1>
-      <p>O Mestre prepara o tabuleiro…</p>
+      <h1>{t("app.title")}</h1>
+      <p>{t("app.tagline")}</p>
     </main>
   );
 }
