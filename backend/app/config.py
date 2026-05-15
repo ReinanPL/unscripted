@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
 
+    embedding_provider: Literal["local"] = "local"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embedding_dim: int = 384
+    rag_top_k_lore: int = 3
+    rag_top_k_rules: int = 5
+
     cors_allowed_origin: str = "http://localhost:5173"
 
     postgres_user: str = "unscripted"
