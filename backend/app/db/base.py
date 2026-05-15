@@ -4,7 +4,17 @@ from datetime import UTC, datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import CHAR, BigInteger, DateTime, Integer, String, Text, text
+from sqlalchemy import (
+    CHAR,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -26,6 +36,25 @@ class CampaignRow(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class TurnTraceRow(Base):
+    __tablename__ = "turn_traces"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "turn_number", name="turn_traces_campaign_turn_uq"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    turn_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    trace: Mapped[dict] = mapped_column(JSONB, nullable=False)  # type: ignore[type-arg]
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
