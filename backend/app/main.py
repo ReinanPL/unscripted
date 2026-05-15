@@ -14,7 +14,7 @@ from app.runner import init_runner
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     provider = get_llm_provider(settings)
-    init_runner(provider)
+    init_runner(provider, settings)
     yield
 
 

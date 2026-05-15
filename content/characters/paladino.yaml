@@ -1,0 +1,21 @@
+name: Paladino
+character_class: paladino
+level: 1
+hp_current: 11
+hp_max: 11
+attributes:
+  strength: 15
+  dexterity: 10
+  constitution: 13
+  intelligence: 10
+  wisdom: 12
+  charisma: 16
+skills:
+  - Medicina
+  - Persuasão
+equipment:
+  - Maça
+  - Escudo
+  - Cota de malha
+  - Símbolo sagrado
+  - Mochila de aventureiro

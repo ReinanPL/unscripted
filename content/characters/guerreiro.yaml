@@ -1,0 +1,20 @@
+name: Guerreiro
+character_class: guerreiro
+level: 1
+hp_current: 12
+hp_max: 12
+attributes:
+  strength: 16
+  dexterity: 12
+  constitution: 15
+  intelligence: 10
+  wisdom: 11
+  charisma: 10
+skills:
+  - Atletismo
+  - Intimidação
+equipment:
+  - Espada longa
+  - Escudo
+  - Cota de malha
+  - Mochila de aventureiro

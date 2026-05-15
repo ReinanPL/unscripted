@@ -2,6 +2,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.state.models import Character, Flags, HistoryEntry, InventoryItem, Location
+
+
+class CampaignCreateRequest(BaseModel):
+    character: Literal["guerreiro", "paladino"]
+
 
 class CampaignCreateResponse(BaseModel):
     campaign_id: str
@@ -14,3 +20,16 @@ class ActionRequest(BaseModel):
 class ActionEvent(BaseModel):
     type: Literal["chunk", "done", "error"]
     text: str = ""
+
+
+class CampaignStateResponse(BaseModel):
+    campaign_id: str
+    character: Character
+    inventory: list[InventoryItem]
+    location: Location
+    flags: Flags
+
+
+class CampaignLogResponse(BaseModel):
+    campaign_id: str
+    history: list[HistoryEntry]
