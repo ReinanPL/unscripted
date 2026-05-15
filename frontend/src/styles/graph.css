@@ -37,21 +37,96 @@
   background:
     radial-gradient(
       ellipse at center,
-      rgba(184, 138, 60, 0.04) 0%,
+      rgba(184, 138, 60, 0.06) 0%,
       transparent 70%
     ),
     var(--c-bg-zone-soft);
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--c-bronze-faint);
+  box-shadow:
+    inset 0 0 0 4px var(--c-bg-zone-soft),
+    inset 0 0 0 5px rgba(184, 138, 60, 0.32);
   position: relative;
   overflow: hidden;
 }
 
-.location-graph__canvas::before {
+/* === Cantoneiras douradas em L nos 4 cantos — vocabulário de
+   cartografia antiga. Não competem com os nós nem com as labels. === */
+.location-graph__corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.location-graph__corner::before,
+.location-graph__corner::after {
   content: "";
   position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(184, 138, 60, 0.12);
-  pointer-events: none;
+  background: var(--c-bronze);
+  opacity: 0.7;
+}
+
+.location-graph__corner::before {
+  width: 100%;
+  height: 1px;
+}
+
+.location-graph__corner::after {
+  width: 1px;
+  height: 100%;
+}
+
+.location-graph__corner--tl {
+  top: 10px;
+  left: 10px;
+}
+.location-graph__corner--tl::before {
+  top: 0;
+  left: 0;
+}
+.location-graph__corner--tl::after {
+  top: 0;
+  left: 0;
+}
+
+.location-graph__corner--tr {
+  top: 10px;
+  right: 10px;
+}
+.location-graph__corner--tr::before {
+  top: 0;
+  right: 0;
+}
+.location-graph__corner--tr::after {
+  top: 0;
+  right: 0;
+}
+
+.location-graph__corner--bl {
+  bottom: 10px;
+  left: 10px;
+}
+.location-graph__corner--bl::before {
+  bottom: 0;
+  left: 0;
+}
+.location-graph__corner--bl::after {
+  bottom: 0;
+  left: 0;
+}
+
+.location-graph__corner--br {
+  bottom: 10px;
+  right: 10px;
+}
+.location-graph__corner--br::before {
+  bottom: 0;
+  right: 0;
+}
+.location-graph__corner--br::after {
+  bottom: 0;
+  right: 0;
 }
 
 .location-graph__empty {
@@ -98,25 +173,26 @@
 
 .location-graph__node-label {
   font-family: var(--font-body);
-  font-size: 13px;
-  fill: var(--c-text-soft);
-  letter-spacing: 0.04em;
+  font-size: 17px;
+  font-weight: 500;
+  fill: var(--c-text);
+  letter-spacing: 0.02em;
   /* SVG não herda font-style */
   pointer-events: none;
   paint-order: stroke;
   stroke: var(--c-ink-deepest);
-  stroke-width: 3;
+  stroke-width: 4;
 }
 
 .location-graph__node-here {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 12px;
   fill: var(--c-bronze-bright);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   paint-order: stroke;
   stroke: var(--c-ink-deepest);
-  stroke-width: 3;
+  stroke-width: 4;
   pointer-events: none;
 }
 

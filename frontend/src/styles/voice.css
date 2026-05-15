@@ -7,27 +7,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  /* Menor e mais discreto — é stub/opcional, AGIR é o principal. */
+  width: 30px;
+  height: 30px;
   padding: 0;
   align-self: center;
-  background: var(--c-ink-deep);
-  color: var(--c-bronze-bright);
-  border: 1px solid var(--c-bronze-faint);
+  background: transparent;
+  color: var(--c-text-faint);
+  border: 1px solid var(--c-border);
   border-radius: 50%;
   cursor: pointer;
+  opacity: 0.7;
   transition:
     background var(--t-fast),
     border-color var(--t-fast),
     color var(--t-fast),
+    opacity var(--t-fast),
     box-shadow var(--t-fast);
 }
 
 .voice-button:hover:not(:disabled),
 .voice-button:focus-visible:not(:disabled) {
-  background: rgba(184, 138, 60, 0.12);
-  border-color: var(--c-bronze-bright);
-  color: var(--c-parchment-bright);
+  background: rgba(184, 138, 60, 0.08);
+  border-color: var(--c-bronze-faint);
+  color: var(--c-text-soft);
+  opacity: 1;
   outline: none;
 }
 

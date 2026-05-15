@@ -17,6 +17,10 @@ const VIEW_W = 800;
 const VIEW_H = 500;
 const NODE_RADIUS = 18;
 const NODE_RADIUS_CURRENT = 22;
+// Padding em volta do bounding box dos nós revelados — espaço para
+// labels acima/abaixo e para a respiração visual quando há 1–2 nós.
+const FIT_PADDING = 140;
+const MIN_VIEW = 360;
 
 interface LocationGraphProps {
   graph: GraphResponse | null;
@@ -33,6 +37,12 @@ export function LocationGraph({ graph, loading }: LocationGraphProps) {
       </header>
 
       <div className="location-graph__canvas">
+        {/* Cantoneiras douradas — vocabulário de cartografia antiga. */}
+        <span className="location-graph__corner location-graph__corner--tl" />
+        <span className="location-graph__corner location-graph__corner--tr" />
+        <span className="location-graph__corner location-graph__corner--bl" />
+        <span className="location-graph__corner location-graph__corner--br" />
+
         {loading ? (
           <p className="location-graph__empty">{t("resume.loading")}</p>
         ) : !graph || graph.nodes.length === 0 ? (
@@ -45,6 +55,28 @@ export function LocationGraph({ graph, loading }: LocationGraphProps) {
   );
 }
 
+function computeViewBox(graph: GraphResponse): string {
+  if (graph.nodes.length === 0) return `0 0 ${VIEW_W} ${VIEW_H}`;
+
+  const xs = graph.nodes.map((n) => n.position.x);
+  const ys = graph.nodes.map((n) => n.position.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const w = Math.max(maxX - minX + FIT_PADDING * 2, MIN_VIEW);
+  const h = Math.max(maxY - minY + FIT_PADDING * 2, MIN_VIEW);
+
+  // Centra o bounding box no viewBox final mesmo quando w/h foram
+  // expandidos pelo mínimo (1 nó, ex.).
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const x = cx - w / 2;
+  const y = cy - h / 2;
+  return `${x} ${y} ${w} ${h}`;
+}
+
 function GraphSvg({ graph }: { graph: GraphResponse }) {
   const t = useT();
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
@@ -52,7 +84,7 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
   return (
     <svg
       className="location-graph__svg"
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={computeViewBox(graph)}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={t("graph.title")}
