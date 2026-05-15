@@ -24,6 +24,7 @@ import { ActionInput } from "../components/ActionInput";
 import { Layout } from "../components/Layout";
 import { LocationGraph } from "../components/LocationGraph";
 import { MasterThinking } from "../components/MasterThinking";
+import { MasterThoughtPanel } from "../components/MasterThoughtPanel";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
@@ -44,6 +45,10 @@ export function Play() {
   const [state, setState] = useState<CampaignStateResponse | null>(null);
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [bootstrapping, setBootstrapping] = useState(true);
+  // Número do último turno consumido nesta sessão.
+  // Decisão da Fase 6: começa null mesmo após retomada — sem
+  // navegação em traces históricos na v1.
+  const [lastTurnNumber, setLastTurnNumber] = useState<number | null>(null);
 
   // Bootstrap: carrega state + log + graph na entrada.
   useEffect(() => {
@@ -107,6 +112,7 @@ export function Play() {
           setTurns,
           setError,
           setInput,
+          setLastTurnNumber,
           fallbackInput: text,
           t,
         });
@@ -152,6 +158,7 @@ export function Play() {
   }
 
   return (
+    <>
     <Layout
       state={
         <StatePanel loading={bootstrapping} state={state} onExit={reset} />
@@ -179,6 +186,11 @@ export function Play() {
       }
       scene={<LocationGraph graph={graph} loading={bootstrapping} />}
     />
+    <MasterThoughtPanel
+      campaignId={campaignId}
+      lastTurnNumber={lastTurnNumber}
+    />
+    </>
   );
 }
 
@@ -186,12 +198,14 @@ interface ConsumeArgs {
   setTurns: React.Dispatch<React.SetStateAction<NarrationTurn[]>>;
   setError: React.Dispatch<React.SetStateAction<ErrorBanner | null>>;
   setInput: React.Dispatch<React.SetStateAction<string>>;
+  setLastTurnNumber: React.Dispatch<React.SetStateAction<number | null>>;
   fallbackInput: string;
   t: (key: string) => string;
 }
 
 function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
-  const { setTurns, setError, setInput, fallbackInput, t } = args;
+  const { setTurns, setError, setInput, setLastTurnNumber, fallbackInput, t } =
+    args;
 
   switch (ev.type) {
     case "chunk": {
@@ -231,6 +245,9 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
           turnNumber: ev.turn_number ?? null,
         })),
       );
+      if (ev.turn_number !== null && ev.turn_number !== undefined) {
+        setLastTurnNumber(ev.turn_number);
+      }
       return true;
     }
     case "rejected": {

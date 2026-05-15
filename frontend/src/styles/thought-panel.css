@@ -1,0 +1,206 @@
+/*
+ * Painel "pensamento do mestre" — drawer recolhível no rodapé.
+ *
+ * Quando fechado: barra fina com nome do painel + caret. Quando
+ * aberto: expande mostrando ruling, retrieval, rolagem e
+ * consequência. Não é janela modal — coexiste com a tela de jogo.
+ */
+
+.thought-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-elevated);
+  background: var(--c-ink-deep);
+  border-top: 1px solid var(--c-bronze-faint);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.thought-panel__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--c-text-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+
+.thought-panel__toggle:hover,
+.thought-panel__toggle:focus-visible {
+  color: var(--c-bronze-bright);
+  background: rgba(184, 138, 60, 0.05);
+  outline: none;
+}
+
+.thought-panel__caret {
+  font-size: 14px;
+  color: var(--c-bronze);
+  line-height: 1;
+}
+
+.thought-panel__label {
+  flex: 1;
+  text-align: left;
+}
+
+.thought-panel__turn {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.thought-panel__body {
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--c-divider, var(--c-border));
+  background: var(--c-ink-deepest);
+}
+
+.thought-panel__empty {
+  font-style: italic;
+  color: var(--c-text-faint);
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.thought-panel__error {
+  color: var(--c-blood);
+  background: rgba(163, 37, 48, 0.08);
+  border-left: 3px solid var(--c-blood);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.thought-panel__sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+}
+
+.thought-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.thought-panel__section--error {
+  grid-column: 1 / -1;
+  color: var(--c-blood);
+  background: rgba(163, 37, 48, 0.06);
+  border-left: 3px solid var(--c-blood);
+  padding: var(--space-3) var(--space-4);
+}
+
+.thought-panel__section-title {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.thought-panel__paragraph {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+  color: var(--c-text);
+}
+
+.thought-panel__paragraph--italic {
+  font-style: italic;
+  color: var(--c-parchment);
+}
+
+.thought-panel__dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.thought-panel__dl dt {
+  color: var(--c-text-faint);
+  letter-spacing: 0.04em;
+}
+
+.thought-panel__dl dd {
+  margin: 0;
+  color: var(--c-text);
+}
+
+.thought-panel__outcome {
+  font-weight: 500;
+}
+
+.thought-panel__outcome--success {
+  color: var(--c-moss);
+}
+
+.thought-panel__outcome--failure {
+  color: var(--c-blood);
+}
+
+.thought-panel__retrieval {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.thought-panel__snippet {
+  padding: var(--space-2) var(--space-3);
+  background: rgba(184, 138, 60, 0.04);
+  border-left: 2px solid var(--c-bronze-faint);
+}
+
+.thought-panel__snippet-source {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  margin-bottom: var(--space-1);
+  letter-spacing: 0.04em;
+}
+
+.thought-panel__snippet-content {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+  color: var(--c-text-soft);
+  font-style: italic;
+}
+
+.thought-panel__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+}
+
+/* Quando aberto, deixa espaço extra no rodapé das outras zonas
+   para o input/scroll não ficar atrás do drawer. */
+.thought-panel--open {
+  /* nada extra aqui — o body do drawer já tem max-height */
+}
