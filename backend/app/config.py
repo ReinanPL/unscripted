@@ -19,6 +19,19 @@ class Settings(BaseSettings):
 
     cors_allowed_origin: str = "http://localhost:5173"
 
+    postgres_user: str = "unscripted"
+    postgres_password: str = "changeme"
+    postgres_db: str = "unscripted"
+    postgres_host: str = "postgres"
+    postgres_port: int = 5432
+
+    @property
+    def database_url(self) -> str:
+        return (
+            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
 
 def get_settings() -> Settings:
     return Settings()
