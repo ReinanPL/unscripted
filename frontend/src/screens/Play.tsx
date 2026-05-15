@@ -22,6 +22,7 @@ import { ActionInput } from "../components/ActionInput";
 import { Layout } from "../components/Layout";
 import { MasterThinking } from "../components/MasterThinking";
 import { Narration, type NarrationTurn } from "../components/Narration";
+import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
 
@@ -143,11 +144,7 @@ export function Play() {
   return (
     <Layout
       state={
-        <StatePanelPlaceholder
-          loading={bootstrapping}
-          state={state}
-          onExit={reset}
-        />
+        <StatePanel loading={bootstrapping} state={state} onExit={reset} />
       }
       narration={
         <div className="play">
@@ -271,46 +268,7 @@ function updateLast<T>(arr: T[], updater: (item: T) => T): T[] {
   return copy;
 }
 
-// Placeholders das outras zonas — substituídos nos próximos commits.
-
-interface StatePanelPlaceholderProps {
-  loading: boolean;
-  state: CampaignStateResponse | null;
-  onExit: () => void;
-}
-
-function StatePanelPlaceholder({
-  loading,
-  state,
-  onExit,
-}: StatePanelPlaceholderProps) {
-  const t = useT();
-  return (
-    <div className="state-panel-placeholder">
-      <h2 className="state-panel-placeholder__title">{t("state.title")}</h2>
-      {loading || !state ? (
-        <p className="state-panel-placeholder__loading">
-          {t("resume.loading")}
-        </p>
-      ) : (
-        <ul className="state-panel-placeholder__list">
-          <li>{state.character.name}</li>
-          <li>
-            HP {state.character.hp_current}/{state.character.hp_max}
-          </li>
-          <li>{state.location.name}</li>
-        </ul>
-      )}
-      <button
-        type="button"
-        className="state-panel-placeholder__exit"
-        onClick={onExit}
-      >
-        {t("resume.back")}
-      </button>
-    </div>
-  );
-}
+// Placeholder da zona de cena — substituído no próximo commit (6.12 grafo).
 
 function ScenePlaceholder() {
   const t = useT();
