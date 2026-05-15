@@ -12,20 +12,30 @@ chapters:
     background: |
       A vila vive em silêncio assustado. O xerife morreu há duas semanas em
       uma emboscada na estrada, e desde então ninguém quis assumir o posto.
-      Os bandidos são liderados por um ex-soldado da guarda real, Joren
-      "Lâmina de Junho", expulso por crimes nunca esclarecidos.
+      Os bandidos são liderados por Joren "Lâmina de Junho", um ex-soldado
+      da guarda real expulso por crimes nunca esclarecidos — na realidade,
+      por desobedecer uma ordem injusta. Ele é metódico, brutal quando
+      precisa, e treinado em emboscadas: foi a especialidade dele na guarda.
+      Tem quatro homens com ele. Um deles é Caelan, filho do dono da taverna
+      — entrou no grupo por dívida com Joren, hesita em violência direta,
+      mas segue o líder por medo.
       O velho Grimwald, dono da Taverna do Javali Pálido, sabe quem são os
-      bandidos — alguns são desertores conhecidos. Ele também tem motivo
-      pessoal para não querer envolvimento direto: seu filho está com eles.
+      bandidos por nome. Não revela o vínculo com Caelan facilmente; o que
+      o pesa é a impotência. Ele próprio foi soldado da guarda real décadas
+      atrás — percepção treinada, leitura de pessoas afiada — mas envelheceu
+      e perdeu a vontade de empunhar o aço.
     starting_scene: taverna_interior
     progress_condition: |
-      O jogador obtém informação suficiente sobre os bandidos (nomes, número,
-      local provável do acampamento) para tomar uma decisão sobre como
-      enfrentar a estrada.
+      O jogador (a) obtém informação suficiente sobre os bandidos — nomes,
+      número, local do acampamento — para tomar uma decisão informada, e
+      (b) resolve a ameaça da estrada, seja pelo combate na clareira, pela
+      rendição negociada, ou por outra rota criativa. Só com a clareira
+      neutralizada (de qualquer forma) o capítulo avança.
     hook_next: |
-      Com informações em mãos, o jogador parte pela estrada do norte ao
-      amanhecer — a próxima cena se passa na clareira onde os bandidos
-      costumam emboscar viajantes.
+      Com a estrada do norte livre, o herói retoma a viagem ao amanhecer.
+      O próximo capítulo se passará no vilarejo seguinte, Pedra-Cinza, onde
+      um aviso real menciona o nome "Lâmina de Junho" — e a guarda real
+      tem interesse específico em quem o derrotou.
     scenes:
       - id: taverna_interior
         name: Interior da Taverna do Javali Pálido
@@ -54,10 +64,13 @@ chapters:
           A rua principal de Marevale, com casas baixas de pedra e madeira.
           Há poucos transeuntes; os que existem evitam contato visual. Um
           aviso pregado num poste oferece recompensa por informações sobre
-          bandidos da estrada do norte.
+          bandidos da estrada do norte. Mais adiante, uma estrada de terra
+          batida segue para o norte, saindo da vila.
         connections:
           - to: taverna_interior
             description: Entrada da Taverna do Javali Pálido.
+          - to: estrada_norte
+            description: Saída norte da vila, em direção à estrada que corta a floresta.
 
       - id: cozinha_dos_fundos
         name: Cozinha dos Fundos
@@ -70,8 +83,48 @@ chapters:
           - to: taverna_interior
             description: Volta para o salão da taverna.
 
+      - id: estrada_norte
+        name: Estrada do Norte
+        description: |
+          A estrada de terra batida sobe suavemente em direção a uma faixa
+          de floresta densa. As pegadas no chão são poucas e antigas;
+          ninguém anda por aqui há dias. O ar é frio, e os pássaros estão
+          em silêncio quando deveriam cantar. Cerca de uma hora de marcha
+          à frente, a estrada some entre árvores grossas.
+        read_aloud: |
+          O vento esfria conforme você deixa Marevale para trás. A estrada
+          de terra avança em direção a uma muralha verde-escura de pinheiros;
+          o silêncio dos pássaros é a primeira coisa que pesa. Você está
+          sozinho na estrada — e sente que isso não é casualidade.
+        connections:
+          - to: rua_da_praca
+            description: Volta para a vila de Marevale.
+          - to: clareira_dos_bandidos
+            description: Adiante, depois de uma curva fechada, a estrada se abre numa clareira.
+
+      - id: clareira_dos_bandidos
+        name: Clareira dos Bandidos
+        description: |
+          A floresta se abre numa clareira de uns trinta passos de largura,
+          atravessada pela estrada. Há marcas de fogueira no centro, uma
+          carroça virada de lado servindo de barricada, e cordas penduradas
+          em galhos baixos — armadilhas grosseiras. Quem chega pela estrada
+          principal é visto antes de chegar perto: o terreno favorece quem
+          já está dentro.
+        read_aloud: |
+          A estrada se abre numa clareira. No centro, restos de fogueira;
+          mais adiante, uma carroça tombada. Você não vê ninguém — mas
+          alguma coisa está errada. O cheiro de couro engordurado, e o
+          peso de olhos que você não consegue identificar.
+        present:
+          - joren
+          - caelan
+        connections:
+          - to: estrada_norte
+            description: Volta pela estrada, em direção à vila.
+
     npcs:
-      - name: Grimwald
+      - name: grimwald
         personality: |
           Cauteloso, taciturno, observador. Fala pouco e com peso. Mede o
           interlocutor antes de responder; não cede informação sem motivo.
@@ -83,7 +136,8 @@ chapters:
           Sabe quem são os bandidos da estrada do norte por nome (Joren, seu
           próprio filho Caelan, e mais três). Sabe onde fica o acampamento —
           numa clareira a cerca de três horas a pé pela estrada. Sabe que
-          Joren foi guarda real e foi expulso.
+          Joren foi guarda real e foi expulso, e que Joren é metódico e
+          montou armadilhas no terreno.
         hidden_state:
           trait: |
             Antigo soldado da guarda real (aposentado há vinte anos),
@@ -93,6 +147,68 @@ chapters:
             Não revela seu próprio passado militar sem provocação direta.
             Não revela que Caelan é seu filho a menos que seja convencido
             (DC 20 em Persuasão com abordagem genuína, ou descoberta indireta).
+            Se o jogador descobre o vínculo, Grimwald pede que Caelan seja
+            poupado, se for possível.
+
+      - name: joren
+        personality: |
+          Calmo, metódico, fala pouco. Mede oponentes como mediria peças
+          num tabuleiro. Não grita, não ameaça — decide. Sob pressão, vira
+          brutal sem cerimônia. Tem um sotaque do norte que lembra os
+          oficiais de guarnição.
+        motivation: |
+          Sobreviver, manter seu grupo coeso e cobrar do reino que o expulsou.
+          Não rouba por prazer; rouba porque foi expulso de tudo o mais.
+          Não cederá a ameaças — só a uma razão prática (acordo, troca,
+          retirada honrosa).
+        knowledge: |
+          Conhece a estrada palmo a palmo. Sabe que o herói está na vila —
+          tem um batedor mantendo olho em Marevale. Não sabe quem é o
+          herói nem por que está aqui. Sabe que Caelan é filho de Grimwald
+          e que isso é alavanca.
+        hidden_state:
+          trait: |
+            Ex-sargento de guarda real, especialista em emboscadas.
+            Percepção treinada (DC 18 para enganá-lo com furtividade ou
+            mentira). Reage instantaneamente a som metálico, movimento
+            errático, ou cheiro de aço recém-empunhado. Em combate aberto,
+            é defensivo — busca o ferimento que tira o oponente do ritmo,
+            não o golpe heroico.
+          notes: |
+            Se o jogador tenta emboscar pela estrada principal: Joren já
+            tem batedor; o teste de Furtividade é Difícil (DC 18). Se o
+            jogador tenta por flanco (contornando pela floresta): DC 15.
+            Se tenta com vantagem clara (informação prévia, dispersão dos
+            bandidos por outro meio): pode cair para DC 12 ou virar sucesso
+            automático.
+            Joren considera render-se se: o herói neutraliza pelo menos
+            dois dos bandidos sem matar Caelan, OU oferece um acordo
+            concreto (passagem livre, dinheiro, intercessão pela vila).
+
+      - name: caelan
+        personality: |
+          Jovem, tenso, fala em ímpetos. Hesita antes de cada golpe — algo
+          no rosto trai vergonha. Sob pressão, segue Joren por medo, não
+          convicção. Se tratado com humanidade, baixa a guarda.
+        motivation: |
+          Pagar a dívida com Joren e voltar para casa. Não se vê como
+          bandido, mas como alguém preso a uma escolha errada feita há um
+          ano. Quer sair vivo desta, idealmente sem que o pai saiba do que
+          ele virou.
+        knowledge: |
+          Sabe que o pai não sabe que ele está aqui — ou pelo menos é o
+          que ele acha. Sabe das armadilhas do acampamento. Não sabe que
+          Joren o usaria como moeda de troca se precisasse.
+        hidden_state:
+          trait: |
+            Hesitante em combate. Em rolagens de combate contra ele,
+            considera-se que ele luta em desvantagem se o herói menciona
+            o pai dele de forma genuína (dis:1d20 nas rolagens dele).
+            Persuasão para fazê-lo render-se: DC 15 com qualquer abordagem
+            respeitosa; DC 12 se o herói menciona Grimwald.
+          notes: |
+            Se reconhece o herói como alguém vindo da taverna do pai,
+            empalidece. Pode tentar avisar Joren — mas hesita.
 
     encounters:
       - id: conversar_com_grimwald
@@ -107,11 +223,55 @@ chapters:
         consequences_success: |
           Grimwald revela: o líder é Joren "Lâmina de Junho", ex-guarda real.
           O acampamento fica numa clareira a três horas a pé pela estrada do
-          norte. Há cinco bandidos no total.
+          norte. Há cinco bandidos no total. Há armadilhas no terreno —
+          cordas, carroças usadas como barricada. Sob mais conversa, pode
+          revelar que Joren foi soldado treinado em emboscadas.
         consequences_failure: |
           Grimwald fecha-se completamente e devolve o copo do herói pelo
           balcão. "A casa vai pagar essa. Boa noite." A vila inteira ficará
           mais difícil de abordar — perde 1 nível de confiança local.
+
+      - id: emboscada_clareira
+        kind: combat
+        trigger: |
+          Quando o jogador chega à clareira_dos_bandidos pela estrada
+          principal e decide atacar, surpreender, ou se aproximar com hostilidade
+          clara. Se chegar negociando, dispara o encontro social paralelo
+          (mesma cena, outra abordagem — o Game Master arbitra).
+        description: |
+          Encontro-padrão estilo emboscada (PRD §5). O jogador tenta agir
+          contra Joren e os bandidos. Joren tem estado oculto relevante:
+          é ex-guarda real treinado em emboscadas, percepção alta, batedor
+          a postos. A clareira tem armadilhas e cobertura favoráveis a quem
+          já está dentro.
+
+          Para uma tentativa de emboscar Joren pela estrada principal:
+          rolagem de Furtividade contra dificuldade DC 18 (alta — ele é
+          veterano e tem batedor). Pelo flanco pela floresta: DC 15. Com
+          vantagem prévia clara (informação obtida de Grimwald + abordagem
+          cuidadosa): DC 12, ou sucesso automático conforme arbitragem do
+          Árbitro.
+
+          Em combate direto sem furtividade, Joren reage primeiro e busca
+          ferimento incapacitante (não letal por padrão — ele prefere
+          render o oponente). Caelan luta em desvantagem se o herói invocar
+          a relação com Grimwald durante o confronto.
+        consequences_success: |
+          O jogador surpreende Joren e neutraliza dois dos bandidos no
+          primeiro golpe. Caelan paralisa, baixa a arma. Joren, ferido e
+          encurralado, oferece rendição se a passagem pela estrada for
+          garantida (sem perseguição). A clareira fica livre, e o jogador
+          pode optar por levar Caelan de volta para o pai, ou deixá-lo
+          partir.
+          Marca: events_occurred += "emboscada_clareira_vencida".
+        consequences_failure: |
+          O batedor de Joren vê o jogador antes do bote. Joren reage e
+          rebate: o jogador sofre 1d6+2 de dano no primeiro confronto e
+          é forçado a recuar pela estrada. Os bandidos não perseguem além
+          da curva — Joren prefere posicionamento. O jogador pode voltar
+          para Marevale, buscar nova abordagem (informação, recurso, rota),
+          e tentar de novo.
+          Marca: events_occurred += "emboscada_clareira_falhada".
 
     image_briefings:
       - id: img-taverna-interior
@@ -128,3 +288,32 @@ chapters:
           - chaminé apagada ao fundo
           - velas em ferro
           - botas pesadas penduradas perto da porta
+
+      - id: img-estrada-norte
+        scene: estrada_norte
+        description: |
+          Estrada de terra batida atravessando campo aberto e subindo em
+          direção a uma muralha de pinheiros densos ao fundo. Sem pessoas
+          na estrada. Céu cinza-claro de fim de tarde.
+        atmosphere: Isolamento, silêncio antinatural, premonição.
+        style: Ilustração de fantasia, paleta fria, traço com textura.
+        elements:
+          - estrada de terra com sulcos antigos
+          - floresta de pinheiros densa ao fundo
+          - poste de madeira inclinado à beira da estrada
+          - céu cinza sem pássaros
+
+      - id: img-clareira-bandidos
+        scene: clareira_dos_bandidos
+        description: |
+          Clareira numa floresta de pinheiros, com restos de fogueira no
+          centro, uma carroça tombada de lado servindo de barricada, e
+          cordas penduradas em galhos baixos como armadilhas grosseiras.
+          Não há figuras visíveis — só os sinais de presença humana.
+        atmosphere: Calma falsa, terreno arquitetado para o bote.
+        style: Ilustração de fantasia, paleta verde-escura e marrom, foco na geometria do terreno.
+        elements:
+          - fogueira apagada com pedras dispostas
+          - carroça tombada
+          - cordas em galhos baixos
+          - pegadas marcando ângulos de aproximação
