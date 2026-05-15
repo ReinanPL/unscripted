@@ -26,6 +26,8 @@ export interface NarrationTurn {
   playerAction: string;
   narrationChunks: string[];
   npcChunks: NpcChunkGroup[];
+  /** Destaque visual quando a rolagem deu margem critica (PRD §6.6). */
+  outcome?: "crit-success" | "crit-fail";
 }
 
 interface NarrationProps {
@@ -51,7 +53,13 @@ export function Narration({ turns, thinking }: NarrationProps) {
       ) : null}
 
       {turns.map((turn, idx) => (
-        <article key={idx} className="narration__turn">
+        <article
+          key={idx}
+          className={
+            "narration__turn" +
+            (turn.outcome ? ` narration__turn--${turn.outcome}` : "")
+          }
+        >
           {turn.playerAction ? (
             <p className="narration__player" aria-label="Ação do jogador">
               {turn.playerAction}

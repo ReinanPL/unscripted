@@ -6,7 +6,10 @@
  * sprite do personagem — a representação é tipográfica.
  */
 
+import { useEffect, useState } from "react";
+
 import { useT } from "../i18n";
+import { usePrevious } from "../state/usePrevious";
 import type { Character, CharacterAttributes } from "../api/types";
 
 interface CharacterSheetProps {
@@ -37,8 +40,24 @@ export function CharacterSheet({
     Math.min(100, (character.hp_current / Math.max(1, character.hp_max)) * 100),
   );
 
+  // Animação de hit quando HP cai (PRD §6.6).
+  const prevHp = usePrevious(character.hp_current);
+  const [hitFlash, setHitFlash] = useState(false);
+  useEffect(() => {
+    if (prevHp === null) return;
+    if (character.hp_current < prevHp) {
+      setHitFlash(true);
+      const handle = setTimeout(() => setHitFlash(false), 460);
+      return () => clearTimeout(handle);
+    }
+  }, [character.hp_current, prevHp]);
+
   return (
-    <article className={`sheet sheet--${variant}`}>
+    <article
+      className={
+        `sheet sheet--${variant}` + (hitFlash ? " fx-hp-hit" : "")
+      }
+    >
       <header className="sheet__header">
         <h3 className="sheet__name">{character.name}</h3>
         <span className="sheet__level">

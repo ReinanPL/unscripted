@@ -12,6 +12,7 @@ import {
   getCampaignGraph,
   getCampaignLog,
   getCampaignState,
+  getTurnTrace,
   isNetworkError,
   streamAction,
 } from "../api";
@@ -29,6 +30,7 @@ import { Narration, type NarrationTurn } from "../components/Narration";
 import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
+import { usePrevious } from "../state/usePrevious";
 
 interface ErrorBanner {
   message: string;
@@ -49,6 +51,26 @@ export function Play() {
   // Decisão da Fase 6: começa null mesmo após retomada — sem
   // navegação em traces históricos na v1.
   const [lastTurnNumber, setLastTurnNumber] = useState<number | null>(null);
+
+  // Pulso de dano (PRD §6.6) — quando HP cai entre dois turnos.
+  const [damageFlash, setDamageFlash] = useState(false);
+  const prevHp = usePrevious(state?.character.hp_current ?? null);
+
+  useEffect(() => {
+    const curr = state?.character.hp_current;
+    if (prevHp === null || curr === undefined) return;
+    if (curr < prevHp) {
+      setDamageFlash(true);
+      const handle = setTimeout(() => setDamageFlash(false), 820);
+      return () => clearTimeout(handle);
+    }
+  }, [state?.character.hp_current, prevHp]);
+
+  useEffect(() => {
+    if (!damageFlash) return;
+    document.body.classList.add("fx-damage-flash");
+    return () => document.body.classList.remove("fx-damage-flash");
+  }, [damageFlash]);
 
   // Bootstrap: carrega state + log + graph na entrada.
   useEffect(() => {
@@ -106,6 +128,7 @@ export function Play() {
     setInput("");
 
     let consumed = false;
+    let consumedTurnNumber: number | null = null;
     try {
       for await (const ev of streamAction(campaignId, text)) {
         consumed = consumeEvent(ev, {
@@ -116,7 +139,12 @@ export function Play() {
           fallbackInput: text,
           t,
         });
-        if (consumed) break;
+        if (consumed) {
+          if (ev.type === "done" && ev.turn_number != null) {
+            consumedTurnNumber = ev.turn_number;
+          }
+          break;
+        }
       }
     } catch (cause) {
       // Falha de rede ou de protocolo: restaura input e remove turn provisório.
@@ -130,15 +158,41 @@ export function Play() {
       });
     } finally {
       setStreaming(false);
-      // Após done: recarrega state e graph para refletir mutações
-      // deterministicas (location nova, locations_revealed expandido).
       if (consumed && campaignId) {
+        // Recarrega state e graph para refletir mutacoes deterministicas
+        // (location nova, locations_revealed expandido).
         getCampaignState(campaignId)
           .then(setState)
           .catch(() => undefined);
         getCampaignGraph(campaignId)
           .then(setGraph)
           .catch(() => undefined);
+        // Busca trace e classifica critico se houve rolagem com margem
+        // grande, atualizando o ultimo turn (Narration aplica destaque).
+        if (consumedTurnNumber !== null) {
+          getTurnTrace(campaignId, consumedTurnNumber)
+            .then((resp) => {
+              const margin = resp.trace.roll_outcome?.check.margin;
+              if (margin === undefined) return;
+              const outcome: NarrationTurn["outcome"] =
+                margin >= 10
+                  ? "crit-success"
+                  : margin <= -10
+                    ? "crit-fail"
+                    : undefined;
+              if (!outcome) return;
+              setTurns((prev) => {
+                if (prev.length === 0) return prev;
+                const copy = prev.slice();
+                copy[copy.length - 1] = {
+                  ...copy[copy.length - 1],
+                  outcome,
+                };
+                return copy;
+              });
+            })
+            .catch(() => undefined);
+        }
       }
     }
   }

@@ -1,0 +1,176 @@
+/*
+ * Animações de reatividade visual (PRD §6.6, ADR-016).
+ *
+ * Sem assets gráficos, sem sprites — toda a reação vem de CSS sobre
+ * a interface existente: a borda da tela pulsa em dano, o número de
+ * HP treme, um momento crítico ganha glow. Animação leve, com peso
+ * editorial.
+ *
+ * Respeita prefers-reduced-motion onde o movimento é forte.
+ */
+
+/* === Borda pulsa em vermelho quando o HP cai === */
+
+.fx-damage-flash {
+  position: relative;
+}
+
+.fx-damage-flash::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+  box-shadow:
+    inset 0 0 48px 8px rgba(163, 37, 48, 0.55),
+    inset 0 0 120px 24px rgba(163, 37, 48, 0.18);
+  animation: fx-damage-pulse 800ms ease-out forwards;
+}
+
+@keyframes fx-damage-pulse {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* === HP no painel: shake horizontal curto quando cai === */
+
+.fx-hp-hit .sheet__hp {
+  animation: fx-hp-shake 420ms ease-in-out;
+}
+
+.fx-hp-hit .sheet__hp-value {
+  color: var(--c-blood);
+}
+
+.fx-hp-hit .sheet__hp-fill {
+  /* Já tem transição em width; aqui só reforça a cor durante o shake. */
+  background: linear-gradient(
+    90deg,
+    var(--c-blood-deep) 0%,
+    var(--c-blood) 100%
+  );
+}
+
+@keyframes fx-hp-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+/* === Glow no total da rolagem quando aparece === */
+
+.thought-panel__dl dd strong {
+  animation: fx-roll-reveal 480ms ease-out;
+}
+
+@keyframes fx-roll-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+    color: var(--c-bronze-bright);
+    text-shadow: 0 0 12px var(--c-bronze-bright);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18);
+    text-shadow: 0 0 8px var(--c-bronze-bright);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
+/* === Destaque do último turno: crítico (sucesso) === */
+
+.narration__turn--crit-success .narration__master {
+  position: relative;
+}
+
+.narration__turn--crit-success .narration__master::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--c-bronze-bright) 30%,
+    var(--c-bronze-bright) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px var(--c-bronze-bright);
+}
+
+/* === Destaque do último turno: falha crítica === */
+
+.narration__turn--crit-fail .narration__master {
+  position: relative;
+}
+
+.narration__turn--crit-fail .narration__master::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--c-blood) 30%,
+    var(--c-blood) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgba(163, 37, 48, 0.55);
+}
+
+/* === Aresta nova no grafo: se desenha com stroke-dasharray === */
+
+.location-graph__edge--new {
+  stroke-dasharray: 8 4;
+  animation: fx-edge-draw 900ms ease-out;
+}
+
+@keyframes fx-edge-draw {
+  from {
+    stroke-dashoffset: 200;
+    opacity: 0;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-damage-flash::after,
+  .fx-hp-hit .sheet__hp,
+  .thought-panel__dl dd strong,
+  .location-graph__edge--new {
+    animation: none;
+  }
+}
