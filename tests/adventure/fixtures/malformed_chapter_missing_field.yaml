@@ -1,0 +1,10 @@
+id: cap-test-missing
+title: Capítulo Sem Campos
+chapters:
+  - id: chap-01
+    title: Faltando coisas
+    starting_scene: praca
+    scenes:
+      - id: praca
+        name: Praça
+        description: ok

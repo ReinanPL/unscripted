@@ -1,0 +1,16 @@
+id: cap-test-bad
+title: Capítulo Quebrado
+language: pt
+chapters:
+  - id: chap-01
+    title: Quebrado
+    premise: x
+    background: y
+    starting_scene: praca
+    progress_condition: z
+    scenes:
+      - id: praca
+        name: Praça
+        description: ok
+        connections:
+          - to: lugar_que_nao_existe

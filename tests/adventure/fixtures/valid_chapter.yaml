@@ -1,0 +1,40 @@
+id: cap-test-01
+title: Capítulo de Teste
+language: pt
+chapters:
+  - id: chap-01
+    title: Início
+    premise: O herói chega à vila.
+    background: A vila está sob ameaça oculta.
+    starting_scene: praca
+    progress_condition: O jogador identifica o líder dos bandidos.
+    hook_next: Os bandidos fogem em direção ao norte.
+    scenes:
+      - id: praca
+        name: Praça da vila
+        description: Uma praça empoeirada com camponeses temerosos.
+        read_aloud: Você chega à praça poeirenta.
+        present: [npc-velho]
+        connections:
+          - to: taverna
+            description: Caminho curto até a taverna.
+      - id: taverna
+        name: Taverna do Javali
+        description: Uma taverna escura com poucos clientes.
+        connections:
+          - to: praca
+    npcs:
+      - name: Velho Tomás
+        personality: Cauteloso, observador.
+        motivation: Proteger sua filha.
+        knowledge: Sabe quem são os bandidos.
+        hidden_state:
+          trait: Antigo soldado, percepção alta.
+          notes: Não revela seu passado sem provocação.
+    encounters:
+      - id: confronto
+        kind: social
+        trigger: Quando o jogador interroga Tomás sobre os bandidos.
+        description: Tomás resiste mas pode ceder a uma boa abordagem.
+        consequences_success: Tomás revela o esconderijo dos bandidos.
+        consequences_failure: Tomás se cala e o jogador perde a confiança da vila.
