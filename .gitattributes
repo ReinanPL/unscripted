@@ -1,0 +1,7 @@
+# Normaliza line endings para LF em todos os arquivos de texto.
+# Garante consistência entre Windows (dev) e Linux (VPS).
+* text=auto eol=lf
+
+# Mantém CRLF apenas em arquivos que exigem (scripts Windows).
+*.bat text eol=crlf
+*.cmd text eol=crlf

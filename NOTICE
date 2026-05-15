@@ -1,0 +1,28 @@
+Unscripted
+Copyright 2025 Unscripted Contributors
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for details.
+
+---
+
+THIRD-PARTY ATTRIBUTIONS
+
+This work includes material from the System Reference Document 5.1 ("SRD 5.1")
+by Wizards of the Coast LLC, available at:
+  https://dnd.wizards.com/resources/systems-reference-document
+
+The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International
+License, available at:
+  https://creativecommons.org/licenses/by/4.0/legalcode
+
+The SRD 5.1 material is used exclusively as the rules corpus (content/srd/) that
+powers the deterministic rules engine. The adventure content (content/chapters/)
+is wholly original and not derived from the SRD.
+
+---
+
+ADVENTURE CONTENT
+
+All adventure chapters under content/chapters/ are original works written for
+this project and are not derived from any third-party published module.

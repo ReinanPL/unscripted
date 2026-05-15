@@ -1,0 +1,56 @@
+repos:
+  # ----------------------------------------------------------------
+  # Python — todos os hooks usam language: system.
+  # entry via "python -m <tool>" garante que funciona mesmo quando
+  # o diretório Scripts do Python não está no PATH do shell.
+  # Requer: pip install -e "backend/[dev]"  (ou pip install ruff mypy)
+  # ----------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (backend)
+        language: system
+        entry: python
+        args: [-m, ruff, check, --fix, backend/app/]
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff format (backend)
+        language: system
+        entry: python
+        args: [-m, ruff, format, backend/app/]
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy (backend)
+        language: system
+        entry: python
+        args: [-m, mypy, backend/app/, --config-file=backend/pyproject.toml]
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+  # ----------------------------------------------------------------
+  # TypeScript — ativo somente quando há .ts/.tsx em frontend/src/
+  # no stage. Requer: cd frontend && npm install
+  # ----------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        language: system
+        entry: npm
+        args: [--prefix, frontend, run, lint, --, --max-warnings=0]
+        files: ^frontend/src/.*\.(ts|tsx)$
+        exclude: \.d\.ts$
+        pass_filenames: false
+
+      - id: tsc-frontend
+        name: tsc --noEmit (frontend)
+        language: system
+        entry: npm
+        args: [--prefix, frontend, run, typecheck]
+        files: ^frontend/src/.*\.(ts|tsx)$
+        exclude: \.d\.ts$
+        pass_filenames: false
