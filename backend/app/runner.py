@@ -4,6 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 
+from google.adk.events import Event, EventActions
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types
@@ -90,7 +91,14 @@ async def stream_turn(campaign_id: str, text: str) -> AsyncGenerator[str, None]:
         raise CampaignNotFoundError(campaign_id)
 
     lore_context = await _fetch_lore_context(text)
-    session.state["lore_context"] = lore_context
+    await _session_service.append_event(
+        session,
+        Event(
+            invocation_id="lore-prefetch",
+            author="system",
+            actions=EventActions(state_delta={"lore_context": lore_context}),
+        ),
+    )
 
     message = types.Content(role="user", parts=[types.Part(text=text)])
 
