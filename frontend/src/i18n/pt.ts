@@ -105,12 +105,15 @@ export const pt = {
     } as Record<string, string>,
   },
   errors: {
+    title: "O mestre tropeçou",
+    fatalTitle: "Esta partida acabou",
     backendDown:
       "Perdi contato com o mestre. Sua mensagem foi preservada — tente novamente em instantes.",
     campaignNotFound: "Esta partida não existe ou expirou.",
     actionFailed:
       "Algo deu errado no meio do turno. Sua mensagem foi preservada e o turno não foi consumido.",
     generic: "Algo deu errado.",
+    recoverToLanding: "Voltar ao início",
   },
   voice: {
     record: "Gravar voz",

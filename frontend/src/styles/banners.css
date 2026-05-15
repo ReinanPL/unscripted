@@ -97,6 +97,17 @@
     );
 }
 
+/* Variante fatal: a campanha sumiu (404). Tom um pouco mais firme. */
+.error-banner--fatal {
+  border-left-color: var(--c-ember);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(201, 84, 51, 0.12) 0%,
+      rgba(201, 84, 51, 0.04) 100%
+    );
+}
+
 .error-banner__body {
   flex: 1;
   display: flex;
@@ -112,9 +123,37 @@
   margin: 0 0 var(--space-1);
 }
 
+.error-banner--fatal .error-banner__title {
+  color: var(--c-ember);
+}
+
 .error-banner__message {
   font-family: var(--font-body);
   font-size: var(--fs-sm);
   color: var(--c-text-soft);
   margin: 0;
+}
+
+.error-banner__recover {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  color: var(--c-parchment-bright);
+  border: 1px solid var(--c-ember-deep);
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast);
+}
+
+.error-banner__recover:hover,
+.error-banner__recover:focus-visible {
+  background: rgba(201, 84, 51, 0.12);
+  border-color: var(--c-ember);
+  outline: none;
 }

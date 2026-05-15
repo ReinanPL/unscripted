@@ -14,6 +14,7 @@ import {
   getCampaignState,
   getTurnTrace,
   isNetworkError,
+  isNotFound,
   streamAction,
 } from "../api";
 import type {
@@ -22,6 +23,7 @@ import type {
   GraphResponse,
 } from "../api/types";
 import { ActionInput } from "../components/ActionInput";
+import { ErrorBanner } from "../components/ErrorBanner";
 import { Layout } from "../components/Layout";
 import { LocationGraph } from "../components/LocationGraph";
 import { MasterThinking } from "../components/MasterThinking";
@@ -35,7 +37,7 @@ import { usePrevious } from "../state/usePrevious";
 
 type Banner =
   | { kind: "robustness"; category: string; reason: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; fatal?: boolean };
 
 export function Play() {
   const t = useT();
@@ -97,9 +99,17 @@ export function Play() {
             }),
           ),
         );
-      } catch {
+      } catch (cause) {
         if (cancelled) return;
-        setBanner({ kind: "error", message: t("errors.backendDown") });
+        if (isNotFound(cause)) {
+          setBanner({
+            kind: "error",
+            message: t("errors.campaignNotFound"),
+            fatal: true,
+          });
+        } else {
+          setBanner({ kind: "error", message: t("errors.backendDown") });
+        }
       } finally {
         if (!cancelled) setBootstrapping(false);
       }
@@ -227,23 +237,12 @@ export function Play() {
                 onDismiss={() => setBanner(null)}
               />
             ) : (
-              <div className="error-banner" role="alert">
-                <div className="error-banner__body">
-                  <h3 className="error-banner__title">
-                    {t("errors.generic")}
-                  </h3>
-                  <p className="error-banner__message">{banner.message}</p>
-                </div>
-                <button
-                  type="button"
-                  className="error-banner__close"
-                  onClick={() => setBanner(null)}
-                  aria-label={t("common.close")}
-                  title={t("common.close")}
-                >
-                  ×
-                </button>
-              </div>
+              <ErrorBanner
+                message={banner.message}
+                fatal={banner.fatal}
+                onDismiss={() => setBanner(null)}
+                onRecover={reset}
+              />
             )
           ) : null}
           <Narration turns={turns} thinking={streaming} />
@@ -346,11 +345,15 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
     }
     case "error":
     default: {
+      // Backend sinalizou erro fatal (geralmente: campanha sumiu/expirou).
+      // Mantemos o input para o caso de o jogador querer copiar; a recuperação
+      // dele é voltar à landing, não tentar de novo.
       setTurns((prev) => prev.slice(0, -1));
       setInput(fallbackInput);
       setBanner({
         kind: "error",
-        message: ev.text || t("errors.generic"),
+        message: ev.text || t("errors.campaignNotFound"),
+        fatal: true,
       });
       return true;
     }
