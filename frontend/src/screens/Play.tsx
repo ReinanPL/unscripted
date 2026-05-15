@@ -32,6 +32,7 @@ import { MasterThoughtPanel } from "../components/MasterThoughtPanel";
 import { Narration, type NarrationTurn } from "../components/Narration";
 import { RobustnessBanner } from "../components/RobustnessBanner";
 import { SceneImage } from "../components/SceneImage";
+import { StatusCompact } from "../components/StatusCompact";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
 import { usePrevious } from "../state/usePrevious";
@@ -280,15 +281,11 @@ export function Play() {
             />
           ) : null}
           <LocationGraph graph={graph} loading={bootstrapping} />
-          {/* Botão provisório — substituído pelo StatusCompact no próximo commit. */}
-          <button
-            type="button"
-            className="layout__exit"
-            onClick={() => setShowSheet(true)}
-            disabled={!state}
-          >
-            {t("state.openSheet")}
-          </button>
+          <StatusCompact
+            state={state}
+            loading={bootstrapping}
+            onOpenSheet={() => setShowSheet(true)}
+          />
         </>
       }
     />

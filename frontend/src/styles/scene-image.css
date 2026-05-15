@@ -13,6 +13,7 @@
   background: var(--c-ink-deep);
   border: 1px solid var(--c-border);
   overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .scene-image__img {
