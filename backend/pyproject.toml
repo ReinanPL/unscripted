@@ -7,6 +7,8 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "google-adk>=1.0",
+    "google-genai>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +42,7 @@ strict = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 exclude = ["tests/"]
+plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
