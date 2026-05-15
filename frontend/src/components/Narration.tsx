@@ -52,12 +52,19 @@ export function Narration({ turns, thinking }: NarrationProps) {
 
       {turns.map((turn, idx) => (
         <article key={idx} className="narration__turn">
-          <p className="narration__player" aria-label="Ação do jogador">
-            {turn.playerAction}
-          </p>
+          {turn.playerAction ? (
+            <p className="narration__player" aria-label="Ação do jogador">
+              {turn.playerAction}
+            </p>
+          ) : null}
 
           {turn.narrationChunks.length > 0 ? (
-            <p className="narration__master">
+            <p
+              className={
+                "narration__master" +
+                (turn.playerAction ? "" : " narration__master--opening")
+              }
+            >
               {turn.narrationChunks.join("")}
               {turn.turnNumber === null && idx === turns.length - 1 ? (
                 <span className="narration__cursor" aria-hidden="true" />

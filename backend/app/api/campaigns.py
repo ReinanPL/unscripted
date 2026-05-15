@@ -36,7 +36,15 @@ from app.runner import (
     get_settings_cached,
 )
 from app.runner_turn import process_turn
-from app.state.models import Character, GameState, HiddenState, Location
+from app.state.adventure_schema import Chapter
+from app.state.models import (
+    Character,
+    Flags,
+    GameState,
+    HiddenState,
+    HistoryEntry,
+    Location,
+)
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -49,13 +57,59 @@ def _load_character_yaml(character: str) -> dict:  # type: ignore[type-arg]
         return yaml.safe_load(f)  # type: ignore[no-any-return]
 
 
-def _build_initial_game_state(character: str) -> GameState:
+def _build_initial_game_state(character: str, chapter: Chapter | None) -> GameState:
     data = _load_character_yaml(character)
+    location, history, revealed = _initial_scene_state(chapter)
     return GameState(
         character=Character.model_validate(data),
-        location=Location(id="start", name="Ponto de partida", description=""),
+        location=location,
+        flags=Flags(locations_revealed=revealed),
+        history=history,
         hidden_state=HiddenState(),
     )
+
+
+def _initial_scene_state(
+    chapter: Chapter | None,
+) -> tuple[Location, list[HistoryEntry], list[str]]:
+    """Locação inicial + turno-zero a partir da starting_scene do capítulo.
+
+    O turno zero (`turn=0`, `player_action=""`) carrega o `read_aloud` da
+    cena de abertura — é o "ler em voz alta" do módulo de RPG, e dá ao
+    jogador o ponto de partida narrativo antes da primeira ação. Se o
+    capítulo ativo não tem `read_aloud` na starting_scene, cai para a
+    `description`.
+    """
+    if chapter is None:
+        return (
+            Location(id="start", name="Ponto de partida", description=""),
+            [],
+            [],
+        )
+    starting = next(
+        (s for s in chapter.scenes if s.id == chapter.starting_scene),
+        None,
+    )
+    if starting is None:
+        return (
+            Location(id="start", name="Ponto de partida", description=""),
+            [],
+            [],
+        )
+    intro = starting.read_aloud or starting.description
+    location = Location(
+        id=starting.id,
+        name=starting.name,
+        description=starting.description,
+    )
+    history = (
+        [
+            HistoryEntry(turn=0, player_action="", narration=intro.strip()),
+        ]
+        if intro.strip()
+        else []
+    )
+    return location, history, [starting.id]
 
 
 async def _get_campaign_or_404(campaign_id: str, db: AsyncSession) -> CampaignRow:
@@ -71,7 +125,7 @@ async def create_campaign_endpoint(
     body: CampaignCreateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CampaignCreateResponse:
-    game_state = _build_initial_game_state(body.character)
+    game_state = _build_initial_game_state(body.character, get_active_chapter())
     row = CampaignRow(
         character_class=body.character,
         language="pt",
