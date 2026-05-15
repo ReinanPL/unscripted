@@ -1,5 +1,6 @@
 import { Layout } from "./components/Layout";
 import { useT } from "./i18n";
+import { CreateCampaign } from "./screens/CreateCampaign";
 import { Landing } from "./screens/Landing";
 import { useSession } from "./state/session";
 import { SessionProvider } from "./state/SessionContext";
@@ -16,9 +17,10 @@ function Router() {
   const { screen } = useSession();
 
   if (screen === "landing") {
-    return (
-      <Layout variant="single" narration={<Landing />} />
-    );
+    return <Layout variant="single" narration={<Landing />} />;
+  }
+  if (screen === "create") {
+    return <Layout variant="single" narration={<CreateCampaign />} />;
   }
 
   return <Placeholder screen={screen} />;
