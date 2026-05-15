@@ -18,8 +18,18 @@ class ActionRequest(BaseModel):
 
 
 class ActionEvent(BaseModel):
-    type: Literal["chunk", "done", "error"]
+    type: Literal[
+        "chunk",
+        "npc_chunk",
+        "done",
+        "error",
+        "error_preserve_input",
+        "rejected",
+    ]
     text: str = ""
+    npc_id: str | None = None
+    turn_number: int | None = None
+    category: str | None = None
 
 
 class CampaignStateResponse(BaseModel):

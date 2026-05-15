@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 import pathlib
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.robustness import RobustnessVerdict
 from app.api.schemas import (
     ActionEvent,
     ActionRequest,
@@ -21,9 +20,20 @@ from app.api.schemas import (
     CampaignStateResponse,
 )
 from app.db.base import CampaignRow
-from app.db.engine import _async_session_factory, get_db
-from app.runner import CampaignNotFoundError, create_adk_session, stream_turn
-from app.state.models import Character, GameState, HiddenState, HistoryEntry, Location
+from app.db.engine import get_db
+from app.runner import (
+    CampaignNotFoundError,
+    create_adk_session,
+    get_active_chapter,
+    get_embedder,
+    get_narrator_runner,
+    get_npc_runner,
+    get_referee_runner,
+    get_session_service,
+    get_settings_cached,
+)
+from app.runner_turn import process_turn
+from app.state.models import Character, GameState, HiddenState, Location
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -53,12 +63,6 @@ async def _get_campaign_or_404(campaign_id: str, db: AsyncSession) -> CampaignRo
     return row
 
 
-@asynccontextmanager
-async def _db_session() -> AsyncGenerator[AsyncSession, None]:
-    async with _async_session_factory() as session:
-        yield session
-
-
 @router.post("", response_model=CampaignCreateResponse, status_code=201)
 async def create_campaign_endpoint(
     body: CampaignCreateRequest,
@@ -85,46 +89,56 @@ async def action_endpoint(
 ) -> StreamingResponse:
     await _get_campaign_or_404(campaign_id, db)
 
+    # Robustness é Step 10 — por ora, todo input chega como ok.
+    verdict = RobustnessVerdict(ok=True)
+    settings = get_settings_cached()
+
     async def event_stream() -> AsyncGenerator[bytes, None]:
-        narration_chunks: list[str] = []
         try:
-            async for chunk in stream_turn(campaign_id, body.text):
-                narration_chunks.append(chunk)
-                event = ActionEvent(type="chunk", text=chunk)
-                yield f"data: {event.model_dump_json()}\n\n".encode()
+            async for ev in process_turn(
+                campaign_id=campaign_id,
+                text=body.text,
+                robustness=verdict,
+                referee_runner=get_referee_runner(),
+                narrator_runner=get_narrator_runner(),
+                npc_runner=get_npc_runner(),
+                session_service=get_session_service(),
+                embedder=get_embedder(),
+                chapter=get_active_chapter(),
+                rag_top_k_lore=settings.rag_top_k_lore,
+                rag_top_k_rules=settings.rag_top_k_rules,
+            ):
+                payload = _turn_event_to_sse(ev)
+                yield payload
+                if ev.type in ("turn_complete", "error_preserve_input"):
+                    return
         except CampaignNotFoundError:
-            yield f"data: {ActionEvent(type='error', text='Campanha não encontrada.').model_dump_json()}\n\n".encode()
-            return
-        except TimeoutError:
-            yield f"data: {ActionEvent(type='error', text='Tempo de resposta excedido.').model_dump_json()}\n\n".encode()
+            yield (
+                "data: "
+                + ActionEvent(type="error", text="Campanha não encontrada.").model_dump_json()
+                + "\n\n"
+            ).encode()
             return
         except asyncio.CancelledError:
             return
 
-        full_narration = "".join(narration_chunks)
-        if full_narration:
-            async with _db_session() as db_write:
-                result = await db_write.execute(
-                    select(CampaignRow).where(CampaignRow.id == campaign_id)
-                )
-                row = result.scalar_one_or_none()
-                if row is not None:
-                    state = GameState.model_validate(row.game_state)
-                    turn_number = len(state.history) + 1
-                    state.history.append(
-                        HistoryEntry(
-                            turn=turn_number,
-                            player_action=body.text,
-                            narration=full_narration,
-                        )
-                    )
-                    row.game_state = state.model_dump(mode="json")
-                    row.updated_at = datetime.now(UTC)
-                    await db_write.commit()
-
-        yield f"data: {ActionEvent(type='done').model_dump_json()}\n\n".encode()
-
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+def _turn_event_to_sse(ev: object) -> bytes:
+    """Converte um TurnEvent em uma linha SSE."""
+    from app.agents.contracts import TurnEvent
+
+    assert isinstance(ev, TurnEvent)
+    if ev.type == "narration_chunk":
+        wire = ActionEvent(type="chunk", text=ev.text)
+    elif ev.type == "npc_chunk":
+        wire = ActionEvent(type="npc_chunk", text=ev.text, npc_id=ev.npc_id)
+    elif ev.type == "error_preserve_input":
+        wire = ActionEvent(type="error_preserve_input", text=ev.text)
+    else:  # turn_complete
+        wire = ActionEvent(type="done", turn_number=ev.turn_number)
+    return f"data: {wire.model_dump_json()}\n\n".encode()
 
 
 @router.get("/{campaign_id}/state", response_model=CampaignStateResponse)

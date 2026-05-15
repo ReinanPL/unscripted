@@ -1,46 +1,96 @@
+"""Wiring do ADK: cria os 3 Runners (Referee, Narrator, NPCActor) sobre
+um único DatabaseSessionService. A orquestração do turno vive em
+`runner_turn.py` (ADR-035).
+"""
+
 from __future__ import annotations
 
-import asyncio
 import logging
-from collections.abc import AsyncGenerator
+import pathlib
 
-from google.adk.events import Event, EventActions
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
-from google.genai import types
 
 from app.agents.narrator import build_narrator_agent
+from app.agents.npc import build_npc_agent
+from app.agents.referee import build_referee_agent
 from app.config import Settings
-from app.db.engine import _async_session_factory
 from app.providers.embedding import EmbeddingProvider
 from app.providers.llm import LlmProvider
-from app.rag.vector_store import search
+from app.runner_turn import APP_NAME, DEFAULT_USER_ID, CampaignNotFoundError
+from app.state.adventure_schema import Adventure, Chapter
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "unscripted"
-DEFAULT_USER_ID = "anon"
+__all__ = [
+    "APP_NAME",
+    "CampaignNotFoundError",
+    "DEFAULT_USER_ID",
+    "create_adk_session",
+    "get_active_chapter",
+    "get_embedder",
+    "get_npc_runner",
+    "get_narrator_runner",
+    "get_referee_runner",
+    "get_session_service",
+    "get_settings_cached",
+    "init_runner",
+]
 
 _session_service: DatabaseSessionService | None = None
-_runner: Runner | None = None
+_referee_runner: Runner | None = None
+_narrator_runner: Runner | None = None
+_npc_runner: Runner | None = None
 _embedder: EmbeddingProvider | None = None
 _settings: Settings | None = None
+_active_chapter: Chapter | None = None
 
 
-class CampaignNotFoundError(Exception):
-    pass
+def _load_active_chapter() -> Chapter | None:
+    """Carrega o primeiro capítulo da aventura inicial (v1: única aventura).
+
+    Multi-aventura/multi-capítulo será resolvido quando o estado da sessão
+    apontar para `chapter_id` específico — v2.
+    """
+    candidates = sorted(pathlib.Path("/app/content/chapters").glob("*/chapter.yaml"))
+    if not candidates:
+        return None
+    try:
+        adventure = Adventure.from_yaml(candidates[0])
+        return adventure.chapters[0] if adventure.chapters else None
+    except Exception:
+        logger.exception("Falha ao carregar capítulo ativo de %s", candidates[0])
+        return None
 
 
 def init_runner(provider: LlmProvider, settings: Settings, embedder: EmbeddingProvider) -> None:
-    global _runner, _session_service, _embedder, _settings
+    global \
+        _session_service, \
+        _referee_runner, \
+        _narrator_runner, \
+        _npc_runner, \
+        _embedder, \
+        _settings, \
+        _active_chapter
     _session_service = DatabaseSessionService(db_url=settings.database_url)
     _embedder = embedder
     _settings = settings
-    _runner = Runner(
+    _referee_runner = Runner(
+        app_name=APP_NAME,
+        agent=build_referee_agent(provider),
+        session_service=_session_service,
+    )
+    _narrator_runner = Runner(
         app_name=APP_NAME,
         agent=build_narrator_agent(provider),
         session_service=_session_service,
     )
+    _npc_runner = Runner(
+        app_name=APP_NAME,
+        agent=build_npc_agent(provider),
+        session_service=_session_service,
+    )
+    _active_chapter = _load_active_chapter()
 
 
 async def create_adk_session(campaign_id: str) -> None:
@@ -49,69 +99,39 @@ async def create_adk_session(campaign_id: str) -> None:
         app_name=APP_NAME,
         user_id=DEFAULT_USER_ID,
         session_id=campaign_id,
-        state={"lore_context": ""},
+        state={"lore_context": "", "rules_context": "", "state_summary": ""},
     )
 
 
-async def _fetch_lore_context(query: str) -> str:
-    """Prefetch determinístico do corpus de lore (ADR-031).
-
-    Retorna string vazia se a busca não tiver resultados ou se o RAG falhar
-    — o agente segue narrando, apenas sem grounding extra.
-    """
-    assert _embedder is not None and _settings is not None
-    try:
-        async with _async_session_factory() as session:
-            hits = await search(
-                session,
-                corpus="lore",
-                query=query,
-                k=_settings.rag_top_k_lore,
-                embedder=_embedder,
-            )
-        if not hits:
-            return ""
-        formatted = "\n\n---\n\n".join(f"({h.source})\n{h.content}" for h in hits)
-        return formatted
-    except Exception:
-        logger.exception("Prefetch de lore falhou; agente seguirá sem contexto")
-        return ""
+def get_session_service() -> DatabaseSessionService:
+    assert _session_service is not None, "init_runner() não foi chamado"
+    return _session_service
 
 
-async def stream_turn(campaign_id: str, text: str) -> AsyncGenerator[str, None]:
-    assert _runner is not None, "init_runner() não foi chamado no startup"
-    assert _session_service is not None, "init_runner() não foi chamado no startup"
+def get_referee_runner() -> Runner:
+    assert _referee_runner is not None, "init_runner() não foi chamado"
+    return _referee_runner
 
-    session = await _session_service.get_session(
-        app_name=APP_NAME,
-        user_id=DEFAULT_USER_ID,
-        session_id=campaign_id,
-    )
-    if session is None:
-        raise CampaignNotFoundError(campaign_id)
 
-    lore_context = await _fetch_lore_context(text)
-    await _session_service.append_event(
-        session,
-        Event(
-            invocation_id="lore-prefetch",
-            author="system",
-            actions=EventActions(state_delta={"lore_context": lore_context}),
-        ),
-    )
+def get_narrator_runner() -> Runner:
+    assert _narrator_runner is not None, "init_runner() não foi chamado"
+    return _narrator_runner
 
-    message = types.Content(role="user", parts=[types.Part(text=text)])
 
-    try:
-        async with asyncio.timeout(60):
-            async for event in _runner.run_async(
-                user_id=DEFAULT_USER_ID,
-                session_id=campaign_id,
-                new_message=message,
-            ):
-                if event.content and event.content.parts:
-                    for part in event.content.parts:
-                        if part.text:
-                            yield part.text
-    except TimeoutError:
-        yield "\n[Narração interrompida: tempo de resposta excedido.]"
+def get_npc_runner() -> Runner:
+    assert _npc_runner is not None, "init_runner() não foi chamado"
+    return _npc_runner
+
+
+def get_embedder() -> EmbeddingProvider:
+    assert _embedder is not None, "init_runner() não foi chamado"
+    return _embedder
+
+
+def get_settings_cached() -> Settings:
+    assert _settings is not None, "init_runner() não foi chamado"
+    return _settings
+
+
+def get_active_chapter() -> Chapter | None:
+    return _active_chapter

@@ -10,6 +10,8 @@ do jogo (princípio determinístico/LLM, ADR-003).
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 from app.agents.robustness import RobustnessVerdict
@@ -85,3 +87,25 @@ class TurnTrace(BaseModel):
     npc_reaction: str | None = None
     npc_id: str | None = None
     error: str | None = None
+
+
+TurnEventType = Literal[
+    "narration_chunk",
+    "npc_chunk",
+    "error_preserve_input",
+    "turn_complete",
+]
+
+
+class TurnEvent(BaseModel):
+    """Evento emitido pelo orquestrador do turno para o consumo do SSE.
+
+    `narration_chunk` / `npc_chunk` carregam pedaços de texto. `error_preserve_input`
+    sinaliza falha não-fatal (frontend devolve a mensagem do jogador, turno
+    não é consumido). `turn_complete` fecha o stream com o número do turno.
+    """
+
+    type: TurnEventType
+    text: str = ""
+    npc_id: str | None = None
+    turn_number: int | None = None
