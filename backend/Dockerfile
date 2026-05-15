@@ -2,6 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Cache do Hugging Face fica em volume montado (docker-compose) para
+# sobreviver a rebuilds e ao primeiro download do modelo de embedding.
+ENV HF_HOME=/cache/hf
+
 COPY pyproject.toml .
 
 RUN pip install --no-cache-dir hatchling && \
