@@ -27,15 +27,15 @@ import { LocationGraph } from "../components/LocationGraph";
 import { MasterThinking } from "../components/MasterThinking";
 import { MasterThoughtPanel } from "../components/MasterThoughtPanel";
 import { Narration, type NarrationTurn } from "../components/Narration";
+import { RobustnessBanner } from "../components/RobustnessBanner";
 import { StatePanel } from "../components/StatePanel";
 import { useT } from "../i18n";
 import { useSession } from "../state/session";
 import { usePrevious } from "../state/usePrevious";
 
-interface ErrorBanner {
-  message: string;
-  variant: "robustness" | "error";
-}
+type Banner =
+  | { kind: "robustness"; category: string; reason: string }
+  | { kind: "error"; message: string };
 
 export function Play() {
   const t = useT();
@@ -43,7 +43,7 @@ export function Play() {
   const [turns, setTurns] = useState<NarrationTurn[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<ErrorBanner | null>(null);
+  const [banner, setBanner] = useState<Banner | null>(null);
   const [state, setState] = useState<CampaignStateResponse | null>(null);
   const [graph, setGraph] = useState<GraphResponse | null>(null);
   const [bootstrapping, setBootstrapping] = useState(true);
@@ -99,7 +99,7 @@ export function Play() {
         );
       } catch {
         if (cancelled) return;
-        setError({ message: t("errors.backendDown"), variant: "error" });
+        setBanner({ kind: "error", message: t("errors.backendDown") });
       } finally {
         if (!cancelled) setBootstrapping(false);
       }
@@ -115,7 +115,7 @@ export function Play() {
     if (!campaignId || streaming) return;
     const text = input.trim();
     if (!text) return;
-    setError(null);
+    setBanner(null);
 
     const provisional: NarrationTurn = {
       turnNumber: null,
@@ -133,7 +133,7 @@ export function Play() {
       for await (const ev of streamAction(campaignId, text)) {
         consumed = consumeEvent(ev, {
           setTurns,
-          setError,
+          setBanner,
           setInput,
           setLastTurnNumber,
           fallbackInput: text,
@@ -150,11 +150,11 @@ export function Play() {
       // Falha de rede ou de protocolo: restaura input e remove turn provisório.
       setTurns((prev) => prev.slice(0, -1));
       setInput(text);
-      setError({
+      setBanner({
+        kind: "error",
         message: isNetworkError(cause)
           ? t("errors.backendDown")
           : t("errors.actionFailed"),
-        variant: "error",
       });
     } finally {
       setStreaming(false);
@@ -219,13 +219,32 @@ export function Play() {
       }
       narration={
         <div className="play">
-          {error ? (
-            <div
-              className={`play__banner play__banner--${error.variant}`}
-              role="alert"
-            >
-              {error.message}
-            </div>
+          {banner !== null ? (
+            banner.kind === "robustness" ? (
+              <RobustnessBanner
+                category={banner.category}
+                reason={banner.reason}
+                onDismiss={() => setBanner(null)}
+              />
+            ) : (
+              <div className="error-banner" role="alert">
+                <div className="error-banner__body">
+                  <h3 className="error-banner__title">
+                    {t("errors.generic")}
+                  </h3>
+                  <p className="error-banner__message">{banner.message}</p>
+                </div>
+                <button
+                  type="button"
+                  className="error-banner__close"
+                  onClick={() => setBanner(null)}
+                  aria-label={t("common.close")}
+                  title={t("common.close")}
+                >
+                  ×
+                </button>
+              </div>
+            )
           ) : null}
           <Narration turns={turns} thinking={streaming} />
           {streaming ? <MasterThinking /> : null}
@@ -250,7 +269,7 @@ export function Play() {
 
 interface ConsumeArgs {
   setTurns: React.Dispatch<React.SetStateAction<NarrationTurn[]>>;
-  setError: React.Dispatch<React.SetStateAction<ErrorBanner | null>>;
+  setBanner: React.Dispatch<React.SetStateAction<Banner | null>>;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   setLastTurnNumber: React.Dispatch<React.SetStateAction<number | null>>;
   fallbackInput: string;
@@ -258,7 +277,7 @@ interface ConsumeArgs {
 }
 
 function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
-  const { setTurns, setError, setInput, setLastTurnNumber, fallbackInput, t } =
+  const { setTurns, setBanner, setInput, setLastTurnNumber, fallbackInput, t } =
     args;
 
   switch (ev.type) {
@@ -309,23 +328,19 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
       // o input do jogador.
       setTurns((prev) => prev.slice(0, -1));
       setInput(fallbackInput);
-      const category = ev.category ?? "unknown";
-      const detail =
-        t(`robustness.categories.${category}`) ||
-        t("robustness.categories.unknown");
-      const reason = ev.text ? ` — ${ev.text}` : "";
-      setError({
-        message: `${detail}${reason}`,
-        variant: "robustness",
+      setBanner({
+        kind: "robustness",
+        category: ev.category ?? "unknown",
+        reason: ev.text,
       });
       return true;
     }
     case "error_preserve_input": {
       setTurns((prev) => prev.slice(0, -1));
       setInput(fallbackInput);
-      setError({
+      setBanner({
+        kind: "error",
         message: ev.text || t("errors.actionFailed"),
-        variant: "error",
       });
       return true;
     }
@@ -333,9 +348,9 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
     default: {
       setTurns((prev) => prev.slice(0, -1));
       setInput(fallbackInput);
-      setError({
+      setBanner({
+        kind: "error",
         message: ev.text || t("errors.generic"),
-        variant: "error",
       });
       return true;
     }

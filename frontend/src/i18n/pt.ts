@@ -117,6 +117,10 @@ export const pt = {
     stop: "Parar",
     notAvailable: "A voz ainda não está implementada — em breve.",
   },
+  common: {
+    close: "Fechar",
+    dismiss: "Dispensar",
+  },
   classes: {
     guerreiro: {
       name: "Guerreiro",
