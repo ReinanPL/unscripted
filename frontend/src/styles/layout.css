@@ -62,6 +62,11 @@
   background: var(--c-bg-zone-soft);
   display: flex;
   flex-direction: column;
+  /* O scroll vive na .narration interna; a zona contém o drawer
+     e o input como filhos flex — nada de fixed/absolute. */
+  overflow: hidden;
+  position: relative;
+  min-width: 0;
 }
 
 .layout__zone--scene {

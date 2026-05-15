@@ -5,13 +5,6 @@
  * mestre.
  */
 
-.play {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
 .play__banner {
   margin: var(--space-3) var(--space-5) 0;
   padding: var(--space-3) var(--space-4);

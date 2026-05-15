@@ -1,23 +1,25 @@
 /*
- * Painel "pensamento do mestre" — drawer recolhível no rodapé.
+ * Painel "pensamento do mestre" — drawer recolhível no rodapé da
+ * zona de narração.
  *
- * Quando fechado: barra fina com nome do painel + caret. Quando
- * aberto: expande mostrando ruling, retrieval, rolagem e
- * consequência. Não é janela modal — coexiste com a tela de jogo.
+ * Vive como irmão flex da .narration e do .action-input dentro de
+ * .layout__zone--narration. Quando fechado, ocupa só a altura do
+ * toggle (faixa fina). Quando aberto, empurra a narração para cima
+ * (que tem scroll interno) e nunca cobre o input, o mapa ou a
+ * imagem — irmãos no flex não se sobrepõem.
  */
 
 .thought-panel {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: var(--z-elevated);
+  flex: 0 0 auto;
   background: var(--c-ink-deep);
   border-top: 1px solid var(--c-bronze-faint);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
-  max-height: 60vh;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.thought-panel--open {
+  max-height: 50vh;
 }
 
 .thought-panel__toggle {
@@ -199,8 +201,3 @@
   color: var(--c-text);
 }
 
-/* Quando aberto, deixa espaço extra no rodapé das outras zonas
-   para o input/scroll não ficar atrás do drawer. */
-.thought-panel--open {
-  /* nada extra aqui — o body do drawer já tem max-height */
-}

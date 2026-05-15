@@ -4,16 +4,18 @@ import { useT } from "../i18n";
 interface LayoutProps {
   state?: ReactNode;
   narration: ReactNode;
+  inputBar?: ReactNode;
+  thoughtPanel?: ReactNode;
   scene?: ReactNode;
-  tracePanel?: ReactNode;
   variant?: "play" | "single";
 }
 
 export function Layout({
   state,
   narration,
+  inputBar,
+  thoughtPanel,
   scene,
-  tracePanel,
   variant = "play",
 }: LayoutProps) {
   const t = useT();
@@ -32,6 +34,8 @@ export function Layout({
             aria-label="Narração"
           >
             {narration}
+            {inputBar}
+            {thoughtPanel}
           </section>
           <aside className="layout__zone layout__zone--scene" aria-label="Cena">
             {scene}
@@ -42,7 +46,6 @@ export function Layout({
           {narration}
         </section>
       )}
-      {tracePanel}
     </div>
   );
 }

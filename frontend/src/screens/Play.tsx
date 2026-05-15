@@ -223,13 +223,12 @@ export function Play() {
   }
 
   return (
-    <>
     <Layout
       state={
         <StatePanel loading={bootstrapping} state={state} onExit={reset} />
       }
       narration={
-        <div className="play">
+        <>
           {banner !== null ? (
             banner.kind === "robustness" ? (
               <RobustnessBanner
@@ -248,20 +247,28 @@ export function Play() {
           ) : null}
           <Narration turns={turns} thinking={streaming} />
           {streaming ? <MasterThinking /> : null}
-          <ActionInput
-            value={input}
-            onChange={setInput}
-            onSubmit={handleSubmit}
-            disabled={streaming || bootstrapping}
-            focusKey={turns.length}
-            onVoiceUnavailable={() =>
-              setBanner({
-                kind: "error",
-                message: t("voice.notAvailable"),
-              })
-            }
-          />
-        </div>
+        </>
+      }
+      inputBar={
+        <ActionInput
+          value={input}
+          onChange={setInput}
+          onSubmit={handleSubmit}
+          disabled={streaming || bootstrapping}
+          focusKey={turns.length}
+          onVoiceUnavailable={() =>
+            setBanner({
+              kind: "error",
+              message: t("voice.notAvailable"),
+            })
+          }
+        />
+      }
+      thoughtPanel={
+        <MasterThoughtPanel
+          campaignId={campaignId}
+          lastTurnNumber={lastTurnNumber}
+        />
       }
       scene={
         <>
@@ -276,11 +283,6 @@ export function Play() {
         </>
       }
     />
-    <MasterThoughtPanel
-      campaignId={campaignId}
-      lastTurnNumber={lastTurnNumber}
-    />
-    </>
   );
 }
 
