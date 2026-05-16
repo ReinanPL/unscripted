@@ -129,42 +129,6 @@
   opacity: 1;
 }
 
-/* === Ornamentação cartográfica decorativa === */
-
-.location-graph__decorations {
-  pointer-events: none;
-}
-
-.location-graph__tree-canopy {
-  fill: rgba(184, 138, 60, 0.18);
-  stroke: var(--c-bronze-faint);
-  stroke-width: 1;
-  stroke-linejoin: round;
-}
-
-.location-graph__tree-trunk {
-  stroke: var(--c-bronze-faint);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-}
-
-.location-graph__river {
-  fill: none;
-  stroke: var(--c-bronze-faint);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  opacity: 0.35;
-}
-
-.location-graph__toponym {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-size: 13px;
-  fill: var(--c-bronze-faint);
-  letter-spacing: 0.14em;
-  opacity: 0.55;
-}
-
 /* === Cantoneiras douradas em L nos 4 cantos — vocabulário de
    cartografia antiga. Não competem com os nós nem com as labels. === */
 .location-graph__corner {
