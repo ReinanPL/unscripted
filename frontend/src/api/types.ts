@@ -88,8 +88,10 @@ export interface TurnTraceResponse {
   trace: TurnTrace;
 }
 
-// Grafo (ADR-038). Campos cartográficos (`title`, `icon`) vêm do
-// schema da aventura (ADR-041) — o frontend lê do dado, não decide.
+// Grafo (ADR-038 + ADR-041 + ADR-042). Campos cartográficos
+// (`title`, `icon`) vêm do schema da aventura — o frontend lê do
+// dado, não decide. `veiled_nodes` é o conjunto de cenas não-reveladas
+// como silhueta (só id + position, conteúdo permanece oculto).
 export interface GraphNode {
   id: string;
   name: string;
@@ -102,10 +104,16 @@ export interface GraphEdge {
   target: string;
 }
 
+export interface VeiledNode {
+  id: string;
+  position: { x: number; y: number };
+}
+
 export interface GraphResponse {
   campaign_id: string;
   nodes: GraphNode[];
   edges: GraphEdge[];
+  veiled_nodes: VeiledNode[];
   current: string;
   title?: string | null;
 }

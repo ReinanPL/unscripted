@@ -12,7 +12,13 @@ protege isso.
 
 from __future__ import annotations
 
-from app.api.schemas import GraphEdge, GraphNode, GraphNodePosition, GraphResponse
+from app.api.schemas import (
+    GraphEdge,
+    GraphNode,
+    GraphNodePosition,
+    GraphResponse,
+    VeiledNode,
+)
 from app.state.adventure_schema import Chapter, ScenePosition
 
 
@@ -61,10 +67,26 @@ def build_graph_response(
             seen_pairs.add(key)
             edges.append(GraphEdge(source=scene.id, target=conn.to))
 
+    # Silhuetas das cenas não-reveladas (ADR-042): só id e position
+    # trafegam. O VeiledNode schema não tem campos para name/icon/etc —
+    # impossível vazá-los por aqui.
+    veiled_nodes: list[VeiledNode] = []
+    for scene in chapter.scenes:
+        if scene.id in revealed:
+            continue
+        position = scene.position or _fallback_position(chapter, scene.id)
+        veiled_nodes.append(
+            VeiledNode(
+                id=scene.id,
+                position=GraphNodePosition(x=position.x, y=position.y),
+            )
+        )
+
     return GraphResponse(
         campaign_id=campaign_id,
         nodes=nodes,
         edges=edges,
+        veiled_nodes=veiled_nodes,
         current=current_location,
         title=chapter.map_title,
     )

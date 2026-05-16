@@ -116,6 +116,26 @@
   pointer-events: none;
 }
 
+/* === Silhuetas das cenas não-reveladas (ADR-042) === */
+
+.location-graph__veiled-node {
+  cursor: default;
+  pointer-events: none;
+}
+
+.location-graph__veiled-disc {
+  fill: transparent;
+  stroke: var(--c-bronze-faint);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  opacity: 0.5;
+}
+
+.location-graph__veiled-pip {
+  fill: var(--c-bronze-faint);
+  opacity: 0.35;
+}
+
 /* === Glifos cartográficos nos nós === */
 
 .location-graph__glyph {

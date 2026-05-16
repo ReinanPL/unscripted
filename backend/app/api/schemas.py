@@ -71,12 +71,29 @@ class GraphEdge(BaseModel):
     target: str
 
 
-class GraphResponse(BaseModel):
-    """Subgrafo revelado de locações ao jogador (ADR-038).
+class VeiledNode(BaseModel):
+    """Cena cuja existência é pública mas conteúdo é oculto (ADR-042).
 
-    Contém apenas nós cujos ids estão em `flags.locations_revealed`
-    (mais a `current_location` por defesa em profundidade). Estado oculto
-    nunca trafega aqui.
+    Aparece no mapa como silhueta — só `id` e `position` trafegam. Por
+    contrato (e por design do schema), esta classe **não tem** `name`,
+    `icon`, `description`, `read_aloud`, `present`, nem `connections`.
+    Adicionar qualquer campo aqui é rompimento explícito do ADR-042.
+    """
+
+    id: str
+    position: GraphNodePosition
+
+
+class GraphResponse(BaseModel):
+    """Subgrafo de locações para o jogador (ADR-038 + ADR-042).
+
+    `nodes` contém cenas reveladas (id, name, icon, position). `edges`
+    contém apenas arestas entre dois nós revelados — adjacência com
+    cenas veladas não trafega.
+
+    `veiled_nodes` contém cenas não-reveladas como silhuetas: só `id`
+    e `position`. O conteúdo (nome, ícone, descrição, NPCs, conexões)
+    permanece sob o filtro de estado oculto.
 
     `title` corresponde ao `Chapter.map_title` (ADR-041) — metadata
     pública de capítulo, equivalente a um título de mapa em um livro.
@@ -85,5 +102,6 @@ class GraphResponse(BaseModel):
     campaign_id: str
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+    veiled_nodes: list[VeiledNode] = Field(default_factory=list)
     current: str
     title: str | None = None

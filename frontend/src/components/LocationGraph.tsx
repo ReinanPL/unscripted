@@ -69,12 +69,19 @@ interface ViewBox {
 }
 
 function computeViewBox(graph: GraphResponse): ViewBox {
-  if (graph.nodes.length === 0) {
+  // Auto-fit considera nós revelados E silhuetas (ADR-042): senão o
+  // mapa fica espremido no tamanho dos revelados e as silhuetas saem
+  // do canvas.
+  const allPositions = [
+    ...graph.nodes.map((n) => n.position),
+    ...graph.veiled_nodes.map((v) => v.position),
+  ];
+  if (allPositions.length === 0) {
     return { x: 0, y: 0, w: VIEW_W, h: VIEW_H };
   }
 
-  const xs = graph.nodes.map((n) => n.position.x);
-  const ys = graph.nodes.map((n) => n.position.y);
+  const xs = allPositions.map((p) => p.x);
+  const ys = allPositions.map((p) => p.y);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -167,6 +174,22 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
         cy={vb.y + vb.h - COMPASS_MARGIN}
         size={COMPASS_SIZE}
       />
+
+      {/* Silhuetas das cenas não-reveladas (ADR-042) — contornos
+          tracejados sem nome nem ícone. Ficam atrás das arestas e nós
+          para que ao revelar, o nó completo "preencha" a forma. */}
+      <g className="location-graph__veiled-nodes">
+        {graph.veiled_nodes.map((v) => (
+          <g
+            key={`veiled-${v.id}`}
+            className="location-graph__veiled-node"
+            transform={`translate(${v.position.x}, ${v.position.y})`}
+          >
+            <circle r={NODE_RADIUS} className="location-graph__veiled-disc" />
+            <circle r={2} className="location-graph__veiled-pip" />
+          </g>
+        ))}
+      </g>
 
       {/* Arestas — desenhadas antes dos nós para ficarem por baixo. */}
       <g className="location-graph__edges">
