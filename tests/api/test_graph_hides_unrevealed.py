@@ -30,12 +30,14 @@ def _make_chapter() -> Chapter:
         background="b",
         starting_scene="taverna",
         progress_condition="ok",
+        map_title="Região Teste",
         scenes=[
             Scene(
                 id="taverna",
                 name="Taverna",
                 description="d",
                 position=ScenePosition(x=160, y=250),
+                icon="tavern",
                 connections=[
                     Connection(to="praca"),
                     Connection(to="cozinha"),
@@ -46,6 +48,7 @@ def _make_chapter() -> Chapter:
                 name="Cozinha",
                 description="d",
                 position=ScenePosition(x=160, y=100),
+                icon="interior_segredo",
                 connections=[Connection(to="taverna")],
             ),
             Scene(
@@ -53,6 +56,7 @@ def _make_chapter() -> Chapter:
                 name="Praça",
                 description="d",
                 position=ScenePosition(x=340, y=250),
+                icon="square_segredo",
                 connections=[
                     Connection(to="taverna"),
                     Connection(to="estrada"),
@@ -63,6 +67,7 @@ def _make_chapter() -> Chapter:
                 name="Estrada",
                 description="d",
                 position=ScenePosition(x=520, y=250),
+                icon="road_segredo",
                 connections=[
                     Connection(to="praca"),
                     Connection(to="clareira"),
@@ -73,6 +78,7 @@ def _make_chapter() -> Chapter:
                 name="Clareira",
                 description="d",
                 position=ScenePosition(x=700, y=250),
+                icon="clearing_segredo",
                 connections=[Connection(to="estrada")],
             ),
         ],
@@ -81,6 +87,14 @@ def _make_chapter() -> Chapter:
 
 _HIDDEN_IDS = ("praca", "cozinha", "estrada", "clareira")
 _HIDDEN_NAMES = ("Praça", "Cozinha", "Estrada", "Clareira")
+# Ícones dos não-revelados usam o sufixo `_segredo` para o teste detectar
+# vazamento caso o icon trafegue por engano (ADR-041).
+_HIDDEN_ICONS = (
+    "interior_segredo",
+    "square_segredo",
+    "road_segredo",
+    "clearing_segredo",
+)
 
 
 def test_only_revealed_scene_appears_in_nodes():
@@ -115,6 +129,10 @@ def test_hidden_scenes_never_appear_in_payload_string():
     for hidden_name in _HIDDEN_NAMES:
         assert hidden_name not in payload, (
             f"nome de cena oculta '{hidden_name}' vazou no payload"
+        )
+    for hidden_icon in _HIDDEN_ICONS:
+        assert hidden_icon not in payload, (
+            f"icon de cena oculta '{hidden_icon}' vazou no payload"
         )
 
 
@@ -186,6 +204,83 @@ def test_position_preserved_from_yaml_authoring():
     taverna = next(n for n in resp.nodes if n.id == "taverna")
     assert taverna.position.x == pytest.approx(160.0)
     assert taverna.position.y == pytest.approx(250.0)
+
+
+def test_icon_propagated_for_revealed_scene():
+    """Cenas reveladas propagam o `icon` autoral para o frontend (ADR-041)."""
+    chapter = _make_chapter()
+    resp = build_graph_response(
+        chapter,
+        campaign_id="cid",
+        locations_revealed=["taverna"],
+        current_location="taverna",
+    )
+    taverna = next(n for n in resp.nodes if n.id == "taverna")
+    assert taverna.icon == "tavern"
+
+
+def test_icon_is_optional():
+    """Cena sem `icon` declarada vira `None` no payload — frontend decide
+    o fallback (pip dourado)."""
+    chapter = Chapter(
+        id="cap",
+        title="t",
+        premise="p",
+        background="b",
+        starting_scene="a",
+        progress_condition="ok",
+        scenes=[Scene(id="a", name="A", description="d")],
+    )
+    resp = build_graph_response(
+        chapter,
+        campaign_id="cid",
+        locations_revealed=["a"],
+        current_location="a",
+    )
+    assert resp.nodes[0].icon is None
+
+
+def test_map_title_is_public_metadata():
+    """`map_title` é metadata pública do capítulo (ADR-041) — aparece
+    no payload independente de quantas cenas o jogador revelou,
+    inclusive no turno 0 (apenas a starting_scene revelada)."""
+    chapter = _make_chapter()
+    resp_t0 = build_graph_response(
+        chapter,
+        campaign_id="cid",
+        locations_revealed=["taverna"],
+        current_location="taverna",
+    )
+    assert resp_t0.title == "Região Teste"
+
+    resp_explorado = build_graph_response(
+        chapter,
+        campaign_id="cid",
+        locations_revealed=["taverna", "praca", "estrada", "clareira", "cozinha"],
+        current_location="clareira",
+    )
+    assert resp_explorado.title == "Região Teste"
+
+
+def test_map_title_none_when_chapter_omits_it():
+    """Capítulos sem `map_title` declarado devolvem `title=None`. O
+    frontend simplesmente não renderiza o título nesse caso."""
+    chapter = Chapter(
+        id="cap",
+        title="t",
+        premise="p",
+        background="b",
+        starting_scene="a",
+        progress_condition="ok",
+        scenes=[Scene(id="a", name="A", description="d")],
+    )
+    resp = build_graph_response(
+        chapter,
+        campaign_id="cid",
+        locations_revealed=["a"],
+        current_location="a",
+    )
+    assert resp.title is None
 
 
 def test_fallback_position_used_when_yaml_omits_it():

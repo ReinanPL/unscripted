@@ -68,6 +68,67 @@
   fill: rgba(184, 138, 60, 0.05);
 }
 
+/* === Título caligráfico da região (ADR-041) === */
+
+.location-graph__title-map {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 500;
+  fill: var(--c-bronze-bright);
+  letter-spacing: 0.08em;
+  /* Borda escura para destacar do fundo texturizado */
+  paint-order: stroke;
+  stroke: var(--c-ink-deepest);
+  stroke-width: 5;
+  pointer-events: none;
+}
+
+/* === Rosa-dos-ventos === */
+
+.location-graph__compass-ring {
+  stroke: var(--c-bronze-faint);
+  stroke-width: 1.2;
+  opacity: 0.6;
+}
+
+.location-graph__compass-arm {
+  fill: rgba(184, 138, 60, 0.55);
+  stroke: var(--c-bronze-faint);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+}
+
+.location-graph__compass-arm--north {
+  fill: var(--c-bronze-bright);
+  stroke: var(--c-bronze);
+  stroke-width: 0.8;
+}
+
+.location-graph__compass-letter {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  fill: var(--c-bronze-bright);
+  paint-order: stroke;
+  stroke: var(--c-ink-deepest);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+/* === Glifos cartográficos nos nós === */
+
+.location-graph__glyph {
+  color: var(--c-bronze-bright);
+  opacity: 0.85;
+  transition: color var(--t-mid), opacity var(--t-mid);
+}
+
+.location-graph__node--current .location-graph__glyph {
+  color: var(--c-parchment-bright);
+  opacity: 1;
+}
+
 /* === Cantoneiras douradas em L nos 4 cantos — vocabulário de
    cartografia antiga. Não competem com os nós nem com as labels. === */
 .location-graph__corner {

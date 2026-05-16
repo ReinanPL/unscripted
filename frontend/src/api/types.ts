@@ -88,11 +88,13 @@ export interface TurnTraceResponse {
   trace: TurnTrace;
 }
 
-// Grafo (endpoint ainda a implementar — ADR-038).
+// Grafo (ADR-038). Campos cartográficos (`title`, `icon`) vêm do
+// schema da aventura (ADR-041) — o frontend lê do dado, não decide.
 export interface GraphNode {
   id: string;
   name: string;
   position: { x: number; y: number };
+  icon?: string | null;
 }
 
 export interface GraphEdge {
@@ -105,6 +107,7 @@ export interface GraphResponse {
   nodes: GraphNode[];
   edges: GraphEdge[];
   current: string;
+  title?: string | null;
 }
 
 // ===== SSE do endpoint /action =====

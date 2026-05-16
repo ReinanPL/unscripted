@@ -12,15 +12,21 @@
 
 import { useT } from "../i18n";
 import type { GraphResponse } from "../api/types";
+import { Compass } from "./Compass";
+import { MapGlyph } from "./MapGlyphs";
 
 const VIEW_W = 800;
 const VIEW_H = 500;
 const NODE_RADIUS = 18;
 const NODE_RADIUS_CURRENT = 22;
 // Padding em volta do bounding box dos nós revelados — espaço para
-// labels acima/abaixo e para a respiração visual quando há 1–2 nós.
+// labels acima/abaixo, título no topo, rosa-dos-ventos no canto.
 const FIT_PADDING = 140;
 const MIN_VIEW = 360;
+// Margem do título e do compass em relação às bordas do viewBox.
+const TITLE_MARGIN_TOP = 56;
+const COMPASS_MARGIN = 70;
+const COMPASS_SIZE = 56;
 
 interface LocationGraphProps {
   graph: GraphResponse | null;
@@ -142,6 +148,26 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
         filter="url(#graph-parchment)"
       />
 
+      {/* Título caligráfico da região (ADR-041) — só renderiza se o
+          capítulo declarou `map_title`. */}
+      {graph.title ? (
+        <text
+          x={vb.x + vb.w / 2}
+          y={vb.y + TITLE_MARGIN_TOP}
+          textAnchor="middle"
+          className="location-graph__title-map"
+        >
+          {graph.title}
+        </text>
+      ) : null}
+
+      {/* Rosa-dos-ventos no canto inferior direito. */}
+      <Compass
+        cx={vb.x + vb.w - COMPASS_MARGIN}
+        cy={vb.y + vb.h - COMPASS_MARGIN}
+        size={COMPASS_SIZE}
+      />
+
       {/* Arestas — desenhadas antes dos nós para ficarem por baixo. */}
       <g className="location-graph__edges">
         {graph.edges.map((edge, idx) => {
@@ -185,10 +211,17 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
                 r={isCurrent ? NODE_RADIUS_CURRENT : NODE_RADIUS}
                 className="location-graph__node-disc"
               />
-              <circle
-                r={(isCurrent ? NODE_RADIUS_CURRENT : NODE_RADIUS) - 6}
-                className="location-graph__node-pip"
-              />
+              {node.icon ? (
+                <MapGlyph
+                  name={node.icon}
+                  size={(isCurrent ? NODE_RADIUS_CURRENT : NODE_RADIUS) * 1.4}
+                />
+              ) : (
+                <circle
+                  r={(isCurrent ? NODE_RADIUS_CURRENT : NODE_RADIUS) - 6}
+                  className="location-graph__node-pip"
+                />
+              )}
               <text
                 y={(isCurrent ? NODE_RADIUS_CURRENT : NODE_RADIUS) + 18}
                 textAnchor="middle"

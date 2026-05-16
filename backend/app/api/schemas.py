@@ -60,6 +60,10 @@ class GraphNode(BaseModel):
     id: str
     name: str
     position: GraphNodePosition
+    # Glifo cartográfico desta cena (ADR-041). Só viaja para nós que
+    # estão no resultado — o filtro de `build_graph_response` garante
+    # que cenas ocultas não trafegam.
+    icon: str | None = None
 
 
 class GraphEdge(BaseModel):
@@ -73,9 +77,13 @@ class GraphResponse(BaseModel):
     Contém apenas nós cujos ids estão em `flags.locations_revealed`
     (mais a `current_location` por defesa em profundidade). Estado oculto
     nunca trafega aqui.
+
+    `title` corresponde ao `Chapter.map_title` (ADR-041) — metadata
+    pública de capítulo, equivalente a um título de mapa em um livro.
     """
 
     campaign_id: str
     nodes: list[GraphNode]
     edges: list[GraphEdge]
     current: str
+    title: str | None = None

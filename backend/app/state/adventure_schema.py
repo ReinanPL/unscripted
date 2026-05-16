@@ -74,6 +74,10 @@ class Scene(BaseModel):
     present: list[str] = Field(default_factory=list)
     connections: list[Connection] = Field(default_factory=list)
     position: ScenePosition | None = None
+    # Glifo cartográfico da cena no mapa (ADR-041). Chave aberta — o
+    # frontend tem um dicionário `name → <g> SVG` com fallback ao pip
+    # dourado quando o ícone for desconhecido ou ausente.
+    icon: str | None = None
 
 
 class Chapter(BaseModel):
@@ -88,6 +92,10 @@ class Chapter(BaseModel):
     progress_condition: str
     hook_next: str = ""
     image_briefings: list[ImageBriefing] = Field(default_factory=list)
+    # Título caligráfico da região no topo do mapa (ADR-041). Opcional
+    # para retrocompatibilidade — capítulos sem este campo renderizam
+    # o mapa sem título.
+    map_title: str | None = None
 
     @model_validator(mode="after")
     def _validate_references(self) -> Chapter:

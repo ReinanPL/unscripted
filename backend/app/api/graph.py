@@ -42,6 +42,7 @@ def build_graph_response(
                 id=scene.id,
                 name=scene.name,
                 position=GraphNodePosition(x=position.x, y=position.y),
+                icon=scene.icon,
             )
         )
 
@@ -65,6 +66,7 @@ def build_graph_response(
         nodes=nodes,
         edges=edges,
         current=current_location,
+        title=chapter.map_title,
     )
 
 
