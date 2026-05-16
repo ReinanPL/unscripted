@@ -53,4 +53,9 @@ async def stt_endpoint(body: SttRequest) -> SttResponse:
 async def tts_endpoint(body: TtsRequest) -> TtsResponse:
     provider: TtsProvider = get_tts_provider_cached()
     audio = await provider.synthesize(body.text, voice=body.voice)
-    return TtsResponse(audio_base64=base64.b64encode(audio).decode("ascii") if audio else "")
+    if not audio:
+        return TtsResponse(audio_base64="", mime_type="")
+    return TtsResponse(
+        audio_base64=base64.b64encode(audio).decode("ascii"),
+        mime_type="audio/mpeg",
+    )
