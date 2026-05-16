@@ -86,6 +86,12 @@ chapters:
           numa mesa de carvalho. Há uma porta dos fundos entreaberta que dá
           para o pátio. Sobre a mesa, um bilhete dobrado tem um símbolo
           rabiscado a carvão — uma lâmina cortando um ramo.
+        read_aloud: |
+          Você passa pela porta atrás do balcão. A cozinha está vazia —
+          chaminé fria, pratos empilhados na pressa sobre uma mesa de
+          carvalho. A porta dos fundos está entreaberta; entra uma
+          corrente fria do pátio. Sobre a mesa, um bilhete dobrado: um
+          símbolo rabiscado a carvão, uma lâmina cortando um ramo.
         connections:
           - to: taverna_interior
             description: Volta para o salão da taverna.
@@ -122,6 +128,13 @@ chapters:
           em galhos baixos — armadilhas grosseiras. Quem chega pela estrada
           principal é visto antes de chegar perto: o terreno favorece quem
           já está dentro.
+          Joren e Caelan ocupam a clareira central; os outros três bandidos
+          estão fora de vista — um batedor à beira da estrada (vê quem vem),
+          um flanqueador na mata norte (fecha o cerco quando o líder dá o
+          sinal), e um terceiro posicionado atrás da carroça (cobre o
+          centro). Por isso o `present` lista apenas Joren e Caelan: os
+          demais só entram em cena quando o combate começa ou são
+          detectados.
         read_aloud: |
           A estrada se abre numa clareira. No centro, restos de fogueira;
           mais adiante, uma carroça tombada. Você não vê ninguém — mas
@@ -156,8 +169,13 @@ chapters:
             hostil, ou mentiras pouco trabalhadas.
           notes: |
             Não revela seu próprio passado militar sem provocação direta.
-            Não revela que Caelan é seu filho a menos que seja convencido
-            (DC 20 em Persuasão com abordagem genuína, ou descoberta indireta).
+            Não revela que Caelan é seu filho a menos que seja convencido —
+            este é um teste SEPARADO do encontro `conversar_com_grimwald`
+            (que cobre informação sobre os bandidos). Para descobrir o
+            vínculo familiar: DC 20 em Persuasão com abordagem genuína
+            tocando diretamente em Caelan ou família, ou descoberta indireta
+            (pista da cozinha, padrão de fala, sobrenome). Não acontece
+            como subproduto de pressionar por informação sobre os bandidos.
             Se o jogador descobre o vínculo, Grimwald pede que Caelan seja
             poupado, se for possível.
 
@@ -227,10 +245,15 @@ chapters:
         trigger: |
           Quando o jogador aborda Grimwald no balcão ou tenta puxar conversa.
         description: |
-          Grimwald responde com cortesia mínima. Para extrair informação útil
-          sobre os bandidos, o jogador precisa demonstrar discrição
-          (Persuasão DC 15 se a abordagem é direta e respeitosa; Persuasão
-          DC 20 se o jogador pressiona muito ou tenta intimidar).
+          Grimwald responde com cortesia mínima. Este encontro cobre apenas
+          o teste de informação sobre os BANDIDOS — o líder, o número, o
+          acampamento, as armadilhas. Para extrair essa informação:
+          Persuasão DC 15 se a abordagem é direta e respeitosa; Persuasão
+          DC 20 se o jogador pressiona, ameaça ou tenta intimidar.
+          O vínculo familiar com Caelan é um teste SEPARADO (DC 20,
+          descrito no hidden_state de Grimwald) — não confundir com esta
+          rolagem. Mesmo passando neste DC, o vínculo não é revelado a
+          menos que o jogador toque diretamente no assunto.
         consequences_success: |
           Grimwald revela: o líder é Joren "Lâmina de Junho", ex-guarda real.
           O acampamento fica numa clareira a três horas a pé pela estrada do
@@ -239,8 +262,8 @@ chapters:
           revelar que Joren foi soldado treinado em emboscadas.
         consequences_failure: |
           Grimwald fecha-se completamente e devolve o copo do herói pelo
-          balcão. "A casa vai pagar essa. Boa noite." A vila inteira ficará
-          mais difícil de abordar — perde 1 nível de confiança local.
+          balcão. "A casa vai pagar essa. Boa noite." A fonte fica
+          esgotada — sem mais informação dele neste capítulo.
 
       - id: emboscada_clareira
         kind: combat
@@ -268,10 +291,14 @@ chapters:
           render o oponente). Caelan luta em desvantagem se o herói invocar
           a relação com Grimwald durante o confronto.
         consequences_success: |
-          O jogador surpreende Joren e neutraliza dois dos bandidos no
-          primeiro golpe. Caelan paralisa, baixa a arma. Joren, ferido e
-          encurralado, oferece rendição se a passagem pela estrada for
-          garantida (sem perseguição). A clareira fica livre, e o jogador
+          O jogador surpreende Joren e neutraliza dois dos três bandidos
+          fora de vista no primeiro golpe (batedor e flanqueador caem
+          antes de gritar; o terceiro, atrás da carroça, hesita). Caelan
+          paralisa, baixa a arma. Joren, ferido e encurralado, oferece
+          rendição se a passagem pela estrada for garantida (sem
+          perseguição). O bandido restante, ao ver o líder caído e Caelan
+          rendido, larga a arma e some na mata norte — sem coordenação,
+          sem Joren, não tenta reagir. A clareira fica livre, e o jogador
           pode optar por levar Caelan de volta para o pai, ou deixá-lo
           partir.
           Marca: events_occurred += "emboscada_clareira_vencida".
