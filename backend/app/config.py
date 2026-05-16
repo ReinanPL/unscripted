@@ -64,11 +64,6 @@ class Settings(BaseSettings):
     # Vozes disponíveis: alloy, sage, echo, coral, shimmer (entre outras).
     openai_tts_voice: str = "alloy"
 
-    # Campo herdado da v1 (ADR-014 stub). Removido junto com o refactor de
-    # `providers/voice.py` em `stt.py` + `tts.py` — fica aqui só enquanto o
-    # voice.py antigo existir, para manter os tipos válidos.
-    voice_provider: Literal["stub"] = "stub"
-
     @property
     def database_url(self) -> str:
         return (

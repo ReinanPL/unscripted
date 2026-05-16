@@ -17,7 +17,8 @@ from app.agents.referee import build_referee_agent
 from app.config import Settings
 from app.providers.embedding import EmbeddingProvider
 from app.providers.llm import LlmProvider
-from app.providers.voice import VoiceProvider, get_voice_provider
+from app.providers.stt import SttProvider, get_stt_provider
+from app.providers.tts import TtsProvider, get_tts_provider
 from app.runner_turn import APP_NAME, DEFAULT_USER_ID, CampaignNotFoundError
 from app.state.adventure_schema import Adventure, Chapter
 
@@ -35,7 +36,8 @@ __all__ = [
     "get_referee_runner",
     "get_session_service",
     "get_settings_cached",
-    "get_voice_provider_cached",
+    "get_stt_provider_cached",
+    "get_tts_provider_cached",
     "init_runner",
 ]
 
@@ -46,7 +48,8 @@ _npc_runner: Runner | None = None
 _embedder: EmbeddingProvider | None = None
 _settings: Settings | None = None
 _active_chapter: Chapter | None = None
-_voice_provider: VoiceProvider | None = None
+_stt_provider: SttProvider | None = None
+_tts_provider: TtsProvider | None = None
 
 
 def _load_active_chapter() -> Chapter | None:
@@ -75,11 +78,13 @@ def init_runner(provider: LlmProvider, settings: Settings, embedder: EmbeddingPr
         _embedder, \
         _settings, \
         _active_chapter, \
-        _voice_provider
+        _stt_provider, \
+        _tts_provider
     _session_service = DatabaseSessionService(db_url=settings.database_url)
     _embedder = embedder
     _settings = settings
-    _voice_provider = get_voice_provider(settings)
+    _stt_provider = get_stt_provider(settings)
+    _tts_provider = get_tts_provider(settings)
     _referee_runner = Runner(
         app_name=APP_NAME,
         agent=build_referee_agent(provider),
@@ -142,6 +147,11 @@ def get_active_chapter() -> Chapter | None:
     return _active_chapter
 
 
-def get_voice_provider_cached() -> VoiceProvider:
-    assert _voice_provider is not None, "init_runner() não foi chamado"
-    return _voice_provider
+def get_stt_provider_cached() -> SttProvider:
+    assert _stt_provider is not None, "init_runner() não foi chamado"
+    return _stt_provider
+
+
+def get_tts_provider_cached() -> TtsProvider:
+    assert _tts_provider is not None, "init_runner() não foi chamado"
+    return _tts_provider
