@@ -55,8 +55,17 @@ export function LocationGraph({ graph, loading }: LocationGraphProps) {
   );
 }
 
-function computeViewBox(graph: GraphResponse): string {
-  if (graph.nodes.length === 0) return `0 0 ${VIEW_W} ${VIEW_H}`;
+interface ViewBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function computeViewBox(graph: GraphResponse): ViewBox {
+  if (graph.nodes.length === 0) {
+    return { x: 0, y: 0, w: VIEW_W, h: VIEW_H };
+  }
 
   const xs = graph.nodes.map((n) => n.position.x);
   const ys = graph.nodes.map((n) => n.position.y);
@@ -72,19 +81,18 @@ function computeViewBox(graph: GraphResponse): string {
   // expandidos pelo mínimo (1 nó, ex.).
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  const x = cx - w / 2;
-  const y = cy - h / 2;
-  return `${x} ${y} ${w} ${h}`;
+  return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
 function GraphSvg({ graph }: { graph: GraphResponse }) {
   const t = useT();
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
+  const vb = computeViewBox(graph);
 
   return (
     <svg
       className="location-graph__svg"
-      viewBox={computeViewBox(graph)}
+      viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={t("graph.title")}
@@ -97,7 +105,42 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        {/* Granulação de pergaminho: turbulência fractal recolorida em
+            tom tabaco. Renderizada num <rect> de fundo abaixo das
+            arestas, dá ao mapa textura de superfície em vez de tela. */}
+        <filter
+          id="graph-parchment"
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            stitchTiles="stitch"
+            seed="7"
+          />
+          <feColorMatrix
+            values="0 0 0 0 0.45
+                    0 0 0 0 0.34
+                    0 0 0 0 0.18
+                    0 0 0 0.10 0"
+          />
+        </filter>
       </defs>
+
+      {/* Fundo texturizado do mapa — cobre o viewBox inteiro, fica
+          atrás das arestas e nós. */}
+      <rect
+        x={vb.x}
+        y={vb.y}
+        width={vb.w}
+        height={vb.h}
+        className="location-graph__parchment"
+        filter="url(#graph-parchment)"
+      />
 
       {/* Arestas — desenhadas antes dos nós para ficarem por baixo. */}
       <g className="location-graph__edges">

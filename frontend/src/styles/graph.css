@@ -35,10 +35,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Pergaminho escuro: halo central em bronze + duas manchas de
+     envelhecimento assimétricas. Soma com a textura granular do
+     <rect> dentro do SVG. */
   background:
     radial-gradient(
       ellipse at center,
-      rgba(184, 138, 60, 0.06) 0%,
+      rgba(184, 138, 60, 0.12) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 20% 80%,
+      rgba(122, 91, 37, 0.10) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 82% 22%,
+      rgba(122, 91, 37, 0.08) 0%,
       transparent 70%
     ),
     var(--c-bg-zone-soft);
@@ -48,6 +61,11 @@
     inset 0 0 0 5px rgba(184, 138, 60, 0.32);
   position: relative;
   overflow: hidden;
+}
+
+/* Fundo de pergaminho dentro do SVG (recebe o filtro de turbulência). */
+.location-graph__parchment {
+  fill: rgba(184, 138, 60, 0.05);
 }
 
 /* === Cantoneiras douradas em L nos 4 cantos — vocabulário de
@@ -148,8 +166,11 @@
 /* === Arestas === */
 
 .location-graph__edge {
-  stroke: rgba(184, 138, 60, 0.32);
-  stroke-width: 1.5;
+  /* Peso de tinta envelhecida — destaca-se do fundo agora texturizado
+     sem virar linha técnica. */
+  stroke: rgba(216, 163, 71, 0.55);
+  stroke-width: 1.8;
+  stroke-linecap: round;
   fill: none;
 }
 
