@@ -1,6 +1,6 @@
 # Unscripted
 
-> Single-player tabletop RPG with an AI Game Master.
+**v1.0** · single-player tabletop RPG with an AI Game Master.
 
 The AI **narrates**, **arbitrates**, and **reacts** to anything the player tries — in natural language. Rules are enforced deterministically by a Python engine; the LLM handles interpretation, prose, and NPC voice. The interface is themed for tabletop play, not generic chat.
 
