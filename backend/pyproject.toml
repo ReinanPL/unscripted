@@ -54,3 +54,16 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["../tests"]
+addopts = [
+    "--cov=app/rules",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",
+    "-m", "not eval",
+]
+markers = [
+    "eval: evaluates an LLM-backed agent against curated cases (opt-in, costs API calls)",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["app/rules"]
