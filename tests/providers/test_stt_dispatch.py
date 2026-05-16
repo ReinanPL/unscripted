@@ -17,8 +17,8 @@ from app.providers.stt import (
 )
 
 
-def test_stub_is_default() -> None:
-    settings = Settings()
+def test_stub_is_returned() -> None:
+    settings = Settings(stt_provider="stub")
     provider = get_stt_provider(settings)
     assert isinstance(provider, StubSttProvider)
 
