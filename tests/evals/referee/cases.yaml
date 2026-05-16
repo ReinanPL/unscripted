@@ -1,0 +1,100 @@
+# Eval set do RefereeAgent (Ruling estruturado).
+#
+# Cada caso descreve uma ação do jogador + contexto (state_summary,
+# rules_context) e o que se espera do Ruling. Os checks são
+# estruturais e tolerantes:
+#   - `precisa_rolagem` exato (bool)
+#   - `pericia_keywords` — pelo menos uma das palavras-chave deve
+#     aparecer na perícia escolhida (case-insensitive). Não exige
+#     match exato de string.
+#   - `dificuldade_min` / `dificuldade_max` — faixa aceitável
+#   - `consequencia_*: true` — só verifica presença (não conteúdo)
+
+- name: emboscada_contra_veterano
+  action: "Armo uma emboscada para o cavaleiro Joren na trilha estreita do bosque."
+  state_summary: "Personagem: Guerreiro, HP 12/12. Localização: trilha estreita no bosque. NPCs presentes: Joren."
+  rules_context: "Furtividade — esconder-se e atacar de surpresa. Em terreno favorável, vantagem na rolagem."
+  hidden_note: "Joren é veterano treinado contra emboscadas, percepção alta."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["furtividade", "stealth"]
+    dificuldade_min: 15
+    dificuldade_max: 25
+    consequencia_sucesso: true
+    consequencia_falha: true
+
+- name: persuadir_taverneiro_amigo
+  action: "Convenço o taverneiro a contar o que viu na noite passada — ele já me deve um favor."
+  state_summary: "Personagem: Paladino, HP 14/14. Localização: taverna do Javali Pálido. NPCs presentes: Bram (taverneiro, amistoso)."
+  rules_context: "Persuasão — convencer alguém disposto a ouvir."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["persuasão", "persuasion"]
+    dificuldade_min: 5
+    dificuldade_max: 15
+    consequencia_sucesso: true
+    consequencia_falha: true
+
+- name: examinar_estante_trivial
+  action: "Examino a estante de livros da biblioteca, procurando algo interessante."
+  state_summary: "Personagem: Guerreiro, HP 12/12. Localização: biblioteca da taverna. Sem NPCs presentes."
+  rules_context: ""
+  expected:
+    precisa_rolagem: false
+    consequencia: true
+
+- name: combate_direto_orc
+  action: "Ataco o orc com minha espada, mirando o pescoço."
+  state_summary: "Personagem: Guerreiro, HP 12/12. Localização: clareira dos bandidos. NPCs presentes: orc."
+  rules_context: "Atletismo — esforço físico em combate. Resistência do oponente fixa a dificuldade."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["atletismo", "athletics", "ataque", "combate"]
+    dificuldade_min: 10
+    dificuldade_max: 20
+    consequencia_sucesso: true
+    consequencia_falha: true
+
+- name: percepcao_pegadas
+  action: "Procuro pegadas frescas no chão da clareira."
+  state_summary: "Personagem: Paladino, HP 14/14. Localização: clareira dos bandidos. Sem NPCs presentes."
+  rules_context: "Percepção — perceber detalhes do ambiente. Pegadas frescas exigem atenção."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["percepção", "perception"]
+    dificuldade_min: 5
+    dificuldade_max: 15
+    consequencia_sucesso: true
+    consequencia_falha: true
+
+- name: intimidar_bandido_fraco
+  action: "Intimido o bandido pequeno encurralado contra a parede, mostrando minha espada."
+  state_summary: "Personagem: Guerreiro, HP 12/12. Localização: ruela escura. NPCs presentes: bandido (acuado, sozinho)."
+  rules_context: "Intimidação — força física e presença. Alvo acuado e sozinho dá vantagem."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["intimidação", "intimidation"]
+    dificuldade_min: 5
+    dificuldade_max: 15
+    consequencia_sucesso: true
+    consequencia_falha: true
+
+- name: andar_pela_estrada
+  action: "Sigo pela estrada do norte em direção ao próximo vilarejo."
+  state_summary: "Personagem: Paladino, HP 14/14. Localização: estrada do norte (segura, dia claro)."
+  rules_context: ""
+  expected:
+    precisa_rolagem: false
+    consequencia: true
+
+- name: cura_em_descanso
+  action: "Sento-me junto à fogueira e cuido dos meus ferimentos."
+  state_summary: "Personagem: Guerreiro, HP 5/12. Localização: acampamento à beira do rio."
+  rules_context: "Medicina — primeiros socorros em descanso curto."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["medicina", "medicine"]
+    dificuldade_min: 5
+    dificuldade_max: 15
+    consequencia_sucesso: true
+    consequencia_falha: true
