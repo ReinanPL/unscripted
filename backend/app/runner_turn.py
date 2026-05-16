@@ -14,6 +14,7 @@ import logging
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
+from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.events import Event, EventActions
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
@@ -161,14 +162,40 @@ async def _run_referee(runner: Runner, campaign_id: str) -> Ruling:
 async def _stream_agent_text(
     runner: Runner, campaign_id: str, trigger: str
 ) -> AsyncGenerator[str, None]:
+    """Itera deltas do agente em modo SSE.
+
+    Sem `streaming_mode=SSE`, o ADK consolida toda a resposta num
+    único event final — o cliente percebe o texto chegando "de vez".
+    Com SSE, cada delta vira um yield e a cadência editorial volta.
+
+    Alguns adaptadores (LiteLlm com OpenAI) emitem tanto deltas quanto
+    um event final com o texto acumulado. Para evitar duplicação,
+    rastreamos o que já foi yieldado e emitimos só o sufixo novo.
+    """
     msg = types.Content(role="user", parts=[types.Part(text=trigger)])
+    run_config = RunConfig(streaming_mode=StreamingMode.SSE)
+    seen = ""
     async for event in runner.run_async(
-        user_id=DEFAULT_USER_ID, session_id=campaign_id, new_message=msg
+        user_id=DEFAULT_USER_ID,
+        session_id=campaign_id,
+        new_message=msg,
+        run_config=run_config,
     ):
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    yield part.text
+        if not (event.content and event.content.parts):
+            continue
+        for part in event.content.parts:
+            text = part.text
+            if not text:
+                continue
+            if text.startswith(seen):
+                delta = text[len(seen) :]
+                if delta:
+                    yield delta
+                seen = text
+            else:
+                # Parte de outro turno/autor — emite limpo e reinicia.
+                yield text
+                seen = text
 
 
 async def _persist_turn(
