@@ -168,13 +168,23 @@ async def _stream_agent_text(
     único event final — o cliente percebe o texto chegando "de vez".
     Com SSE, cada delta vira um yield e a cadência editorial volta.
 
-    Alguns adaptadores (LiteLlm com OpenAI) emitem tanto deltas quanto
-    um event final com o texto acumulado. Para evitar duplicação,
-    rastreamos o que já foi yieldado e emitimos só o sufixo novo.
+    Alguns adaptadores (LiteLlm + OpenAI) emitem três coisas misturadas
+    no mesmo stream: deltas puros ("Você", " se", " mantém"), eventos
+    cumulativos ("Você se mantém"), e — no fim — um event final com o
+    texto completo acumulado. Para não duplicar, mantemos `yielded`
+    com tudo que já saiu pelo generator e decidimos por caso:
+      - text começa com yielded  → emite só o sufixo novo.
+      - text já está em yielded  → final acumulado redundante, ignora.
+      - caso contrário           → delta puro, emite e acumula.
+
+    Sobrescrever `seen = text` (versão anterior) perdia o histórico do
+    que já tinha sido emitido — quando o event final acumulado chegava,
+    o `seen` era só o último delta, falhava o startswith e o texto
+    inteiro era re-emitido como duplicata. O `yielded` corrige isso.
     """
     msg = types.Content(role="user", parts=[types.Part(text=trigger)])
     run_config = RunConfig(streaming_mode=StreamingMode.SSE)
-    seen = ""
+    yielded = ""
     async for event in runner.run_async(
         user_id=DEFAULT_USER_ID,
         session_id=campaign_id,
@@ -187,19 +197,16 @@ async def _stream_agent_text(
             text = part.text
             if not text:
                 continue
-            # SSE mode emite parciais (deltas) e um event final com o texto
-            # acumulado. Yieldar tudo geraria duplicação — rastreamos o
-            # que já foi emitido e mandamos só o sufixo novo. Funciona
-            # tanto se o ADK manda deltas independentes (`seen` falha o
-            # prefix, cai no else) quanto consolidados (prefix bate).
-            if text.startswith(seen):
-                delta = text[len(seen) :]
+            if text.startswith(yielded):
+                delta = text[len(yielded) :]
                 if delta:
                     yield delta
-                seen = text
+                    yielded += delta
+            elif text in yielded:
+                continue
             else:
                 yield text
-                seen = text
+                yielded += text
 
 
 async def _persist_turn(
