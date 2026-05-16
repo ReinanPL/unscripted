@@ -15,12 +15,17 @@ class CampaignCreateResponse(BaseModel):
 
 class ActionRequest(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
+    # Se True, o backend dispara TTS por frase em paralelo ao texto e emite
+    # `audio_sentence` no SSE (ADR-048). Default False: zero chamadas TTS,
+    # custo zero. O frontend só seta True quando o toggle TTS está ligado.
+    tts_enabled: bool = False
 
 
 class ActionEvent(BaseModel):
     type: Literal[
         "chunk",
         "npc_chunk",
+        "audio_sentence",
         "done",
         "error",
         "error_preserve_input",
@@ -30,6 +35,10 @@ class ActionEvent(BaseModel):
     npc_id: str | None = None
     turn_number: int | None = None
     category: str | None = None
+    # Campos do audio_sentence: índice da frase no turno e MP3 base64.
+    sentence_index: int | None = None
+    audio_b64: str = ""
+    mime: str = ""
 
 
 class CampaignStateResponse(BaseModel):

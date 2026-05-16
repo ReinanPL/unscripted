@@ -10,9 +10,11 @@ não de julgamento.
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from typing import TypedDict
 
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.events import Event, EventActions
@@ -29,9 +31,11 @@ from app.agents.contracts import (
     TurnTrace,
 )
 from app.agents.robustness import RobustnessVerdict
+from app.agents.sentence_buffer import SentenceBuffer
 from app.db.base import CampaignRow, TurnTraceRow
 from app.db.engine import _async_session_factory
 from app.providers.embedding import EmbeddingProvider
+from app.providers.tts import TtsProvider
 from app.rag.vector_store import search
 from app.rules.checks import check
 from app.rules.consequences import apply_consequence
@@ -48,6 +52,14 @@ DEFAULT_USER_ID = "anon"
 
 class CampaignNotFoundError(Exception):
     pass
+
+
+class StreamStats(TypedDict):
+    """Saída mutável do `_stream_with_audio` consumida pelo caller."""
+
+    text: str
+    next_sentence_index: int
+    tts_errors: list[str]
 
 
 async def _fetch_corpus(
@@ -209,6 +221,113 @@ async def _stream_agent_text(
                 yielded += text
 
 
+async def _stream_with_audio(
+    *,
+    runner: Runner,
+    campaign_id: str,
+    trigger: str,
+    text_event_type: str,
+    npc_id: str | None,
+    tts_provider: TtsProvider | None,
+    tts_voice: str,
+    sentence_index_start: int,
+    stats: StreamStats,
+) -> AsyncGenerator[TurnEvent, None]:
+    """Stream texto + (se `tts_provider`) audio_sentence em paralelo (ADR-048).
+
+    Texto chega imediatamente conforme o LLM emite. Quando `tts_provider` é
+    passado, o `SentenceBuffer` detecta fim de frase e dispara
+    `asyncio.create_task` do TTS — emite o `audio_sentence` (base64 MP3)
+    no mesmo gerador assim que cada áudio fica pronto, **em ordem de
+    `sentence_index`**. Quando passado `None`, zero chamadas TTS.
+
+    `stats` é mutado pra devolver ao caller:
+        - `stats["text"]` (str): texto acumulado de tudo que foi yieldado.
+        - `stats["next_sentence_index"]` (int): próximo índice livre.
+        - `stats["tts_errors"]` (list[str]): falhas individuais de frase.
+
+    Reordenação garantida no backend: se a frase N fica pronta antes da
+    N-1, segura no buffer e só emite depois — o frontend pode confiar
+    em FIFO.
+    """
+    queue: asyncio.Queue[TurnEvent | None] = asyncio.Queue()
+    pending: list[asyncio.Task[None]] = []
+    ready: dict[int, TurnEvent | None] = {}
+    sentence_buffer = SentenceBuffer()
+    next_to_emit = sentence_index_start
+    next_to_assign = sentence_index_start
+    tts_errors: list[str] = []
+    text_acc = ""
+
+    async def _release_in_order() -> None:
+        nonlocal next_to_emit
+        while next_to_emit in ready:
+            ev = ready.pop(next_to_emit)
+            if ev is not None:
+                await queue.put(ev)
+            next_to_emit += 1
+
+    async def _synth(idx: int, sentence: str) -> None:
+        if tts_provider is None:
+            return
+        try:
+            audio = await tts_provider.synthesize(sentence, voice=tts_voice)
+            if audio:
+                ready[idx] = TurnEvent(
+                    type="audio_sentence",
+                    sentence_index=idx,
+                    audio_b64=base64.b64encode(audio).decode("ascii"),
+                    mime="audio/mpeg",
+                )
+            else:
+                # TTS retornou vazio (texto sem som útil): pula esta frase
+                # sem bloquear a ordem.
+                ready[idx] = None
+        except Exception as exc:
+            logger.exception("TTS falhou na frase #%d", idx)
+            tts_errors.append(f"frase {idx}: {type(exc).__name__}: {exc}")
+            ready[idx] = None
+        await _release_in_order()
+
+    async def _stream() -> None:
+        nonlocal text_acc, next_to_assign
+        try:
+            async for chunk in _stream_agent_text(runner, campaign_id, trigger):
+                text_acc += chunk
+                await queue.put(TurnEvent(type=text_event_type, text=chunk, npc_id=npc_id))
+                if tts_provider is not None:
+                    for sentence in sentence_buffer.push(chunk):
+                        idx = next_to_assign
+                        next_to_assign += 1
+                        pending.append(asyncio.create_task(_synth(idx, sentence)))
+            # Frase residual ao fim do stream do agente.
+            if tts_provider is not None:
+                residual = sentence_buffer.flush()
+                if residual:
+                    idx = next_to_assign
+                    next_to_assign += 1
+                    pending.append(asyncio.create_task(_synth(idx, residual)))
+            # Aguarda todas as tasks de TTS terminarem antes de sinalizar fim.
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+        finally:
+            await queue.put(None)
+
+    streamer = asyncio.create_task(_stream())
+    try:
+        while True:
+            event = await queue.get()
+            if event is None:
+                break
+            yield event
+    finally:
+        if not streamer.done():
+            streamer.cancel()
+        stats["text"] = text_acc
+        stats["next_sentence_index"] = next_to_assign
+        stats["tts_errors"] = tts_errors
+
+
 async def _persist_turn(
     campaign_id: str,
     state: GameState,
@@ -269,6 +388,9 @@ async def process_turn(
     chapter: Chapter | None,
     rag_top_k_lore: int,
     rag_top_k_rules: int,
+    tts_provider: TtsProvider | None = None,
+    tts_voice: str = "",
+    tts_enabled: bool = False,
 ) -> AsyncGenerator[TurnEvent, None]:
     """Pipeline determinístico do turno (ADR-035).
 
@@ -276,7 +398,14 @@ async def process_turn(
     de invocar esta função. Em falha, o turno **não** é consumido
     (estado não muda, history não cresce) e um evento
     `error_preserve_input` é emitido.
+
+    Quando `tts_enabled=True` e `tts_provider` é passado, dispara TTS por
+    frase em paralelo ao stream do Narrator/NPC (ADR-048) — emite
+    `audio_sentence` no mesmo gerador conforme cada áudio fica pronto,
+    em ordem de `sentence_index`. Falha de TTS de uma frase **não**
+    corrompe o turno: registra em `tts_errors` do trace e segue.
     """
+    effective_tts = tts_provider if tts_enabled else None
     async with _async_session_factory() as db:
         result = await db.execute(select(CampaignRow).where(CampaignRow.id == campaign_id))
         row = result.scalar_one_or_none()
@@ -306,6 +435,8 @@ async def process_turn(
     roll_outcome: RollOutcome | None = None
     consequence_applied: ConsequenceProposal | None = None
     npc_error: str | None = None
+    tts_errors_acc: list[str] = []
+    next_sentence_idx = 0
 
     # Fase crítica: Referee + Narrator. Falha aqui ⇒ turno NÃO consumido.
     try:
@@ -339,9 +470,26 @@ async def process_turn(
                     "consequence_applied": consequence_applied.model_dump_json(),
                 },
             )
-            async for chunk in _stream_agent_text(narrator_runner, campaign_id, "narrar turno"):
-                narration_text += chunk
-                yield TurnEvent(type="narration_chunk", text=chunk)
+            narrator_stats: StreamStats = {
+                "text": "",
+                "next_sentence_index": next_sentence_idx,
+                "tts_errors": [],
+            }
+            async for ev in _stream_with_audio(
+                runner=narrator_runner,
+                campaign_id=campaign_id,
+                trigger="narrar turno",
+                text_event_type="narration_chunk",
+                npc_id=None,
+                tts_provider=effective_tts,
+                tts_voice=tts_voice,
+                sentence_index_start=next_sentence_idx,
+                stats=narrator_stats,
+            ):
+                yield ev
+            narration_text = narrator_stats["text"]
+            next_sentence_idx = narrator_stats["next_sentence_index"]
+            tts_errors_acc.extend(narrator_stats["tts_errors"])
     except Exception as exc:
         logger.exception("Falha crítica no turno %s (Referee/Narrator)", campaign_id)
         partial = TurnTrace(
@@ -382,13 +530,26 @@ async def process_turn(
                             "narration": narration_text,
                         },
                     )
-                    collected = ""
-                    async for chunk in _stream_agent_text(
-                        npc_runner, campaign_id, "reagir como NPC"
+                    npc_stats: StreamStats = {
+                        "text": "",
+                        "next_sentence_index": next_sentence_idx,
+                        "tts_errors": [],
+                    }
+                    async for ev in _stream_with_audio(
+                        runner=npc_runner,
+                        campaign_id=campaign_id,
+                        trigger="reagir como NPC",
+                        text_event_type="npc_chunk",
+                        npc_id=npc_id_used,
+                        tts_provider=effective_tts,
+                        tts_voice=tts_voice,
+                        sentence_index_start=next_sentence_idx,
+                        stats=npc_stats,
                     ):
-                        collected += chunk
-                        yield TurnEvent(type="npc_chunk", text=chunk, npc_id=npc_id_used)
-                    npc_text = collected
+                        yield ev
+                    npc_text = npc_stats["text"]
+                    next_sentence_idx = npc_stats["next_sentence_index"]
+                    tts_errors_acc.extend(npc_stats["tts_errors"])
             except Exception as exc:
                 logger.exception("NPCActor falhou no turno %s; turno segue sem reação", campaign_id)
                 npc_error = f"{type(exc).__name__}: {exc}"
@@ -406,6 +567,7 @@ async def process_turn(
         npc_reaction=npc_text,
         npc_id=npc_id_used,
         error=npc_error,
+        tts_errors=tts_errors_acc,
     )
     try:
         await _persist_turn(campaign_id, state, trace, text, narration_text, turn_number)

@@ -34,6 +34,7 @@ from app.runner import (
     get_referee_runner,
     get_session_service,
     get_settings_cached,
+    get_tts_provider_cached,
 )
 from app.runner_turn import process_turn
 from app.state.adventure_schema import Chapter
@@ -175,6 +176,9 @@ async def action_endpoint(
                 chapter=get_active_chapter(),
                 rag_top_k_lore=settings.rag_top_k_lore,
                 rag_top_k_rules=settings.rag_top_k_rules,
+                tts_provider=get_tts_provider_cached() if body.tts_enabled else None,
+                tts_voice=settings.openai_tts_voice,
+                tts_enabled=body.tts_enabled,
             ):
                 payload = _turn_event_to_sse(ev)
                 yield payload
@@ -202,6 +206,13 @@ def _turn_event_to_sse(ev: object) -> bytes:
         wire = ActionEvent(type="chunk", text=ev.text)
     elif ev.type == "npc_chunk":
         wire = ActionEvent(type="npc_chunk", text=ev.text, npc_id=ev.npc_id)
+    elif ev.type == "audio_sentence":
+        wire = ActionEvent(
+            type="audio_sentence",
+            sentence_index=ev.sentence_index,
+            audio_b64=ev.audio_b64,
+            mime=ev.mime,
+        )
     elif ev.type == "error_preserve_input":
         wire = ActionEvent(type="error_preserve_input", text=ev.text)
     else:  # turn_complete

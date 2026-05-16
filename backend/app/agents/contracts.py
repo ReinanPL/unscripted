@@ -87,11 +87,13 @@ class TurnTrace(BaseModel):
     npc_reaction: str | None = None
     npc_id: str | None = None
     error: str | None = None
+    tts_errors: list[str] = Field(default_factory=list)
 
 
 TurnEventType = Literal[
     "narration_chunk",
     "npc_chunk",
+    "audio_sentence",
     "error_preserve_input",
     "turn_complete",
 ]
@@ -100,12 +102,19 @@ TurnEventType = Literal[
 class TurnEvent(BaseModel):
     """Evento emitido pelo orquestrador do turno para o consumo do SSE.
 
-    `narration_chunk` / `npc_chunk` carregam pedaços de texto. `error_preserve_input`
-    sinaliza falha não-fatal (frontend devolve a mensagem do jogador, turno
-    não é consumido). `turn_complete` fecha o stream com o número do turno.
+    `narration_chunk` / `npc_chunk` carregam pedaços de texto. `audio_sentence`
+    carrega o MP3 (base64) de uma frase, emitido conforme o TTS de cada frase
+    fica pronto (ADR-048) — chega em ordem mas após os chunks de texto da
+    mesma frase. `error_preserve_input` sinaliza falha não-fatal (frontend
+    devolve a mensagem do jogador, turno não é consumido). `turn_complete`
+    fecha o stream com o número do turno.
     """
 
     type: TurnEventType
     text: str = ""
     npc_id: str | None = None
     turn_number: int | None = None
+    # Campos do audio_sentence: índice sequencial dentro do turno e MP3 base64.
+    sentence_index: int | None = None
+    audio_b64: str = ""
+    mime: str = ""
