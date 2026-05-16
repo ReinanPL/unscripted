@@ -5,13 +5,15 @@ from app.providers.llm import LlmProvider
 
 
 def build_narrator_agent(provider: LlmProvider) -> LlmAgent:
-    """Cria o NarratorAgent mínimo da Fase 1.
+    """Narrador — transforma o resultado do turno em prosa, em streaming.
 
-    Sem RAG, sem FunctionTools. Apenas narração em linguagem natural.
+    Sem `output_schema` (prosa livre). Sem tools. Modelo:
+    `build_model("narrative")` — favorece velocidade e fluência, pode
+    ser um modelo mais leve que o REASONING (split por agente, ADR-045).
     """
     return LlmAgent(
         name="narrator",
-        model=provider.build_model(),
+        model=provider.build_model("narrative"),
         description="Game Master narrador — interpreta e narra as ações do jogador.",
         instruction=NARRATOR_INSTRUCTION,
     )

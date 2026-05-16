@@ -13,9 +13,28 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "production"] = "development"
 
-    llm_provider: Literal["gemini_aistudio"] = "gemini_aistudio"
+    # ===== LLM (multi-provider — ADR-045) =====
+    # `llm_provider` seleciona a implementação. Cada provider tem dois modelos:
+    # - `*_MODEL_REASONING` é usado pelo RefereeAgent (output_schema=Ruling).
+    # - `*_MODEL_NARRATIVE` é usado pelo Narrator/NPCActor (streaming de prosa).
+    # Quando `*_MODEL_NARRATIVE` está vazio, faz fallback para o REASONING
+    # (single-model preservado — útil para Gemini/OpenAI).
+    llm_provider: Literal["gemini_aistudio", "groq", "openai"] = "gemini_aistudio"
+
+    # Gemini (Google AI Studio)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model_reasoning: str = "gemini-2.5-flash"
+    gemini_model_narrative: str = ""
+
+    # Groq (via LiteLlm — wrapper do ADK)
+    groq_api_key: str = ""
+    groq_model_reasoning: str = "llama-3.3-70b-versatile"
+    groq_model_narrative: str = "llama-3.1-8b-instant"
+
+    # OpenAI (via LiteLlm)
+    openai_api_key: str = ""
+    openai_model_reasoning: str = "gpt-4o-mini"
+    openai_model_narrative: str = ""
 
     embedding_provider: Literal["local"] = "local"
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

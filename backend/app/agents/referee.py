@@ -11,10 +11,12 @@ def build_referee_agent(provider: LlmProvider) -> LlmAgent:
     Usa `output_schema=Ruling` do ADK. Por isso não recebe tools: o
     contexto de regras chega via prefetch determinístico no `runner.py`
     (mesmo padrão da ADR-031 para o lore).
+
+    Modelo: `build_model("reasoning")` — favorece capacidade analítica.
     """
     return LlmAgent(
         name="referee",
-        model=provider.build_model(),
+        model=provider.build_model("reasoning"),
         description="Árbitro — define se há rolagem, qual perícia e dificuldade.",
         instruction=REFEREE_INSTRUCTION,
         output_schema=Ruling,

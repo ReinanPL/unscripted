@@ -11,10 +11,13 @@ def build_npc_agent(provider: LlmProvider) -> LlmAgent:
     prompt via placeholder `{npc_persona}` a cada turno. A persona vem do
     capítulo (`Adventure.chapters[].npcs[]`), incluindo personalidade,
     motivação, conhecimento e estado oculto.
+
+    Modelo: `build_model("narrative")` — mesmo do Narrator, pelos mesmos
+    motivos (streaming + prosa).
     """
     return LlmAgent(
         name="npc_actor",
-        model=provider.build_model(),
+        model=provider.build_model("narrative"),
         description="Intérprete de NPC — fala e reage em personagem.",
         instruction=NPC_INSTRUCTION,
     )
