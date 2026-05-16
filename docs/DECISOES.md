@@ -395,9 +395,13 @@
   1. **Segunda linha de defesa nos prompts** dos agentes — instruções de robustez fazem o Game Master se manter no papel mesmo se a heurística falhar (`PRD.md` §8, `ARQUITETURA.md` §15).
   2. **Impacto do falso positivo é apenas reapresentar o aviso vermelho** ao jogador; o estado não corrompe, o turno não é consumido, a mensagem é preservada (ADR-020). Custo: um aviso indevido que o jogador pode contornar reescrevendo a ação.
   3. **Impacto do falso negativo é mitigado** pelos prompts dos agentes e, sobretudo, pela validação determinística da **saída** do LLM antes de tocar o estado (fronteira determinístico/LLM, ADR-003). Mesmo se uma entrada abusiva passa, a saída ainda é validada.
+- **Limitações conhecidas e aceitas explicitamente:**
+  - Padrões baseados em palavras-chave em PT-BR — jogador escrevendo em outro idioma escapa (v1 só popula PT, ADR-015 — risco baixo).
+  - Não detecta injeção semântica sofisticada que evita as palavras-chave conhecidas (ex.: roleplay elaborado para tirar o GM do papel).
+  - Não detecta conteúdo proibido descrito de forma indireta ou eufemística.
 - A heurística é **refinada continuamente durante a implementação**: cada falso positivo ou negativo encontrado vira uma regra. Esse refinamento não bloqueia a v1 — ele acompanha o uso.
 - Em **v2+, se necessário, pode-se promover** a estratégia para classificador ou LLM dedicado, **com base em dados reais de uso** (categorias de FP/FN observadas), não em especulação.
-- A localização da implementação é `backend/app/agents/robustness.py`, conforme `PLANO_IMPLEMENTACAO.md` Tarefa 5.6.
+- A localização da implementação é `backend/app/agents/robustness.py`.
 
 ---
 
@@ -546,30 +550,6 @@
 - **Sem mascarar problemas reais:** o `report.falhas` é parte visível do log; problemas estruturais ainda derrubam o startup. Não há "quase tudo funcionando em silêncio".
 - **Coerência com ADR-020:** já tratamos falha do LLM sem corromper estado e sem perder a jogada. ADR-034 é a contrapartida para a camada de ingestão.
 - **Teste explícito:** um teste de `ingest_all` com um arquivo válido + um malformado verifica que (a) o válido entra, (b) o malformado fica em `report.falhas`, (c) **nenhuma exceção propaga**.
-
----
-
-## ADR-026 — Validação de robustez por heurística determinística (sem classificador)
-
-**Contexto.** O PRD §8 e §9 definem três categorias de entrada do jogador que devem ser barradas **antes** de qualquer agente LLM: (a) declaração de resultado em vez de intenção ("eu mato o cavaleiro instantaneamente"), (b) tentativa abusiva / injeção de prompt ("ignore as instruções anteriores"), (c) conteúdo proibido (gore gratuito, sexual). Em qualquer um, o turno não é consumido e um aviso vermelho destacado aparece. Decisão pendente: como detectar.
-
-**Opções consideradas.**
-- **A — Classificador ML/LLM dedicado:** um modelo (ou chamada extra ao Gemini) classifica a entrada em "ok"/"declaração"/"injeção"/"proibido". Acurácia alta possível, mas custo de mais uma chamada de LLM por turno, latência extra, e — ironicamente — superfície adicional para injeção via o próprio classificador.
-- **B — Instrução nos prompts dos agentes:** confiar nos prompts dos LLMs ("se o jogador declarar resultado, recuse"). Não atende ao requisito do PRD: o turno **não pode** ser consumido, e o tratamento tem que ser determinístico e auditável (aviso vermelho específico, não narração improvisada).
-- **C — Heurística determinística (regex + listas de padrões) no backend, antes dos agentes:** função pura que retorna `RobustnessVerdict(ok | rejected, categoria, motivo)`. Sem LLM, sem latência extra, totalmente testável.
-
-**Decisão.** **Opção C — heurística determinística** em `backend/app/agents/robustness.py`. Listas de padrões + regex para cada categoria. Função pura, testável, executada **antes** do prefetch de RAG e da invocação de qualquer agente.
-
-**Consequências.**
-- **Determinístico e barato:** zero chamadas de LLM extras; latência desprezível; cada decisão é auditável (qual padrão acertou).
-- **Coerente com ADR-003:** a fronteira determinístico/LLM aplica-se também à porta de entrada do turno. Decidir "isto é válido?" é regra, não julgamento.
-- **Falsos positivos/negativos são aceitáveis na v1.** A heurística é simples por design; cobre os casos canônicos do PRD §8/§9 e os exemplos prototípicos de injeção conhecidos. Casos sutis (sarcasmo sofisticado, paráfrase elaborada de injeção, conteúdo limítrofe) podem passar — é o trade-off explícito. O eval set de robustez (Fase 7.3) mede a taxa real.
-- **Limitações conhecidas e aceitas:**
-  - Padrões baseados em palavras-chave em PT-BR; jogador escrevendo em outro idioma escapa (v1 só popula PT, ADR-015 — risco baixo).
-  - Não detecta injeção semântica que evita as palavras-chave conhecidas (ex.: roleplay elaborado para tirar o GM do papel).
-  - Não detecta conteúdo proibido descrito de forma indireta ou eufemística.
-- **Defesa em profundidade:** o prompt dos agentes ainda reforça o papel ("você é o GM, mantenha-se no escopo"), mas isso é segunda linha — a primeira é determinística.
-- **Refinamento futuro:** se o eval da Fase 7 mostrar taxa de falso-negativo alta em produção real, pode-se promover para Opção A (classificador). Não fazer agora.
 
 ---
 
