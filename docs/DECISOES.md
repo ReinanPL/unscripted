@@ -766,4 +766,37 @@ Concretamente:
 
 ---
 
+## ADR-043 — Eval set dos agentes em pytest com marker `eval` (opt-in, contra LLM real)
+
+**Contexto.** A Fase 7 exige avaliação sistemática do comportamento dos agentes — não basta os unit tests determinísticos do motor. Três alvos: `RefereeAgent` (Ruling estruturado), `NarratorAgent` (prosa), e a heurística de robustez (determinística). O ADK oferece um CLI de avaliação próprio (`adk eval`), e há a opção tradicional de testes pytest. Como integrar isso ao projeto, sem que vire fricção no CI ou despesa silenciosa de API?
+
+**Opções consideradas.**
+- **A — `adk eval` (CLI/SDK do ADK):** ferramenta nativa, formato de caso próprio. Pago em complexidade de integração e em formato adicional para manter. Não há ganho prático que justifique a curva — os checks que queremos (campo Pydantic, regex em prosa) são triviais em Python.
+- **B — Snapshot mockado:** mock do provider de LLM com respostas fixas, validando que parser/contrato não regrediu. Roda em CI sem custo, mas **não testa o agente real** — vira teste de plumbing. Invalida a tese do eval set (saber se o LLM faz a coisa certa).
+- **C — Pytest com marker `eval` opt-in, chamando Gemini real:** os casos vivem em YAML ao lado de cada teste; o marker `eval` excluído do default (CI verde sem custo); rodar exige `GEMINI_API_KEY` no ambiente e `pytest -m eval` explícito. Skip elegante quando a chave não está presente.
+
+**Decisão.** **Opção C — pytest + marker `eval`, opt-in, contra Gemini real.**
+
+Concretamente:
+- `pytest.ini` registra o marker `eval` e o exclui via `addopts = -m "not eval"`. O CI default fica verde sem custo de API.
+- Casos vivem em `tests/evals/{robustness,referee,narrator}/cases.yaml`, carregados via fixture `load_cases` em `tests/evals/conftest.py`.
+- O fixture `require_gemini_key` (ou check inline no fixture do agente) skipa o módulo quando a chave não está presente.
+- Cada agente eval constrói o agente real via `build_*_agent(provider)` + um `InMemorySessionService` (não precisa de Postgres para isolar a invocação do agente).
+- Cobertura de `app/rules` (90% obrigatório) é desligada com `--no-cov` quando se roda `pytest -m eval`, porque eval não exercita o motor.
+
+**Escopo dos checks por agente:**
+- **Referee:** estrutural e tolerante. `precisa_rolagem` exato, `pericia` por keywords, `dificuldade` por faixa, `consequencia_*` por presença. Não exige string-match. 8 casos cobrindo rolagem necessária (alta/baixa dificuldade), trivial sem rolagem, perícias distintas.
+- **Narrator:** apenas **regressão grossa** (esta é a decisão de escopo dura — não perseguir nota alta em avaliação de prosa). Três modos bloqueantes: (a) regra alucinada (regex por `\d+d\d+`, "rolagem", "DC", "perícia"), (b) meta-fala ("como mestre", "vou narrar"), (c) contradição direta de lore (substring quando o caso fornece `lore_contradictions`). Heurística sobre prosa é ruidosa por natureza — perseguir fluência é over-engineering.
+- **Robustez:** determinístico, sem `eval` marker. Mede precision (0 falso-positivo em ações válidas) e recall por categoria (0 falso-negativo em ações abusivas óbvias). Casos borderline são reportados sem falhar o build — documentam a fronteira da heurística (ADR-026).
+
+**Consequências.**
+- **CI fica verde sem custo.** `pytest` na raiz roda 139 testes + skipa 10 (postgres-dependent) + deseleciona 2 (eval Referee/Narrator). Cobertura do motor em 100%.
+- **Eval roda quando se quer.** Desenvolvedor com chave: `pytest -m eval --no-cov` ~30 chamadas de API, custo desprezível em Gemini Flash.
+- **Limitações aceitas:** o eval do Narrator vai dar ruído inevitável — uma narração legítima pode citar "espada de duas mãos" e disparar regex de gore se mal calibrado, ou ignorar um lore implícito sem disparar o check. A defesa é (a) `expected_forbidden` precisos por caso, (b) escopo grosso explícito neste ADR.
+- **Custo escala com casos.** Mais casos = mais chamadas. Por isso o set é enxuto: 8 cases no Referee, 6 no Narrator, ~30 (gratuitos) na Robustez.
+- **Refinamento futuro:** se vier um classificador de robustez (ADR-026 deixa a porta aberta), o eval set já existe para compará-lo com a heurística antes de promover.
+- **Não usamos `adk eval`** — porta aberta para v2 se o ADK adicionar features que justifiquem.
+
+---
+
 Esta seção é um lembrete: o planejamento cobriu as decisões estruturais, mas pontos novos surgirão quando o código encostar na realidade. Quando surgirem, decidir com base nos princípios (`ARQUITETURA.md` §2) e **registrar aqui** como um novo ADR. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento.
