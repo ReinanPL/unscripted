@@ -108,12 +108,13 @@
   gap: var(--space-3);
   padding-bottom: var(--space-5);
   position: relative;
-  /* Centra cada turno no espaço amplo: o texto tem max-width 65ch,
-     mas o bloco do turno fica visualmente centralizado em vez de
-     colado à esquerda. */
-  width: 100%;
-  max-width: 68ch;
-  margin: 0 auto;
+  /* Margens fixas e simétricas (manuscrito). Sem max-width: o texto
+     ocupa toda a largura entre as margens, então em zonas mais
+     largas o respiro cresce com a zona — não vira centralização nem
+     gera vazio assimétrico. */
+  width: auto;
+  margin-left: 6rem;
+  margin-right: 6rem;
 }
 
 /* Ornamento entre turnos — pequeno losango em bronze centrado sobre
@@ -160,7 +161,6 @@
   padding-left: var(--space-4);
   border-left: 2px solid var(--c-bronze-faint);
   line-height: var(--lh-base);
-  max-width: 65ch;
 }
 
 .narration__master {
@@ -169,8 +169,9 @@
   line-height: var(--lh-loose);
   color: var(--c-text);
   margin: 0;
-  /* Linha de leitura confortável: 60–75 caracteres por linha. */
-  max-width: 65ch;
+  /* Sem max-width: o texto preenche todo o espaço disponível do
+     .narration__turn, que define a largura via margin-left e
+     margin-right simétricos. */
   text-align: justify;
   hyphens: auto;
 }
