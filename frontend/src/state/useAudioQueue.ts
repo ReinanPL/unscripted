@@ -20,6 +20,10 @@ import { useCallback, useEffect, useRef } from "react";
 export interface AudioQueue {
   enqueue: (blob: Blob) => void;
   clear: () => void;
+  /** Cria o elemento de áudio dentro de um user gesture (ex.: click do
+   *  toggle). Toca um buffer silencioso e pausa — destrava a política
+   *  de autoplay do browser para chamadas subsequentes. */
+  unlock: () => void;
 }
 
 export function useAudioQueue(): AudioQueue {
@@ -63,13 +67,39 @@ export function useAudioQueue(): AudioQueue {
     const el = getAudio();
     if (el.paused && !el.src) {
       el.src = url;
-      el.play().catch(() => {
-        // Se autoplay falhar, mantém o URL na fila pra próxima oportunidade.
-        queueRef.current.unshift(url);
-      });
+      el.play()
+        .then(() => console.info("[tts] audio playing", url))
+        .catch((err) => {
+          console.warn("[tts] audio play() blocked or failed", err);
+          // Mantém o URL na fila pra próxima oportunidade.
+          queueRef.current.unshift(url);
+        });
     } else {
+      console.info("[tts] enqueued (audio busy)", url);
       queueRef.current.push(url);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const unlock = useCallback(() => {
+    const el = getAudio();
+    if (!el.paused) return;
+    // WAV mínimo (44 bytes header + 0 bytes data) — buffer silencioso
+    // só pra atravessar a política de autoplay. Não toca som audível.
+    const silent =
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    el.src = silent;
+    el.play()
+      .then(() => {
+        // Sucesso: o browser aceitou o play. Limpa o src vazio para
+        // a próxima enqueue começar do zero.
+        el.pause();
+        el.removeAttribute("src");
+      })
+      .catch(() => {
+        // Se nem assim destravou, próxima enqueue tentará de novo.
+        el.removeAttribute("src");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -107,5 +137,5 @@ export function useAudioQueue(): AudioQueue {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { enqueue, clear };
+  return { enqueue, clear, unlock };
 }

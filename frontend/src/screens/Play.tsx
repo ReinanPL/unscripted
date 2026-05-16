@@ -65,9 +65,16 @@ export function Play() {
 
   function handleTtsToggle(next: boolean) {
     setTtsEnabled(next);
-    // Desligar mid-turno: interrompe áudio que estiver tocando e
-    // esvazia a fila (ADR-049).
-    if (!next) audioQueue.clear();
+    if (next) {
+      // Liga: destrava autoplay tocando um buffer silencioso dentro do
+      // user gesture (click). Sem isso, o blob real que chegar depois
+      // do `done` do SSE seria bloqueado pela política de autoplay.
+      audioQueue.unlock();
+    } else {
+      // Desliga mid-turno: interrompe áudio que estiver tocando e
+      // esvazia a fila (ADR-049).
+      audioQueue.clear();
+    }
   }
 
   // Atalho global: tecla "C" alterna o modal da ficha. Ignora quando
@@ -213,11 +220,19 @@ export function Play() {
         // narração disponível, pede o áudio do turno e enfileira no
         // useAudioQueue. Sincronia frase-a-frase entra no Bloco 3.
         if (ttsEnabled && consumedNarration) {
+          console.info("[tts] requesting", consumedNarration.length, "chars");
           ttsToBlob(consumedNarration)
             .then((blob) => {
-              if (blob) audioQueue.enqueue(blob);
+              if (blob) {
+                console.info("[tts] received blob", blob.size, "bytes");
+                audioQueue.enqueue(blob);
+              } else {
+                console.warn("[tts] backend returned empty audio");
+              }
             })
-            .catch(() => undefined);
+            .catch((err) => {
+              console.error("[tts] request failed", err);
+            });
         }
 
         // Recarrega state e graph para refletir mutacoes deterministicas
