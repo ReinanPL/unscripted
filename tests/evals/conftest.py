@@ -24,22 +24,20 @@ import yaml
 
 
 @pytest.fixture
-def load_cases(request: pytest.FixtureRequest) -> Callable[..., dict[str, Any]]:
-    """Carrega o YAML de casos ao lado do arquivo de teste.
+def load_cases(request: pytest.FixtureRequest) -> Callable[..., Any]:
+    """Carrega o YAML de casos ao lado do arquivo de teste. Retorna
+    o que o YAML contiver (`list` ou `dict` no topo — depende do caso).
 
         def test_x(load_cases):
             data = load_cases()           # ./cases.yaml
             data = load_cases("alt.yaml") # ./alt.yaml
     """
 
-    def _load(name: str = "cases.yaml") -> dict[str, Any]:
+    def _load(name: str = "cases.yaml") -> Any:
         base = Path(request.path).resolve().parent
         path = base / name
         with path.open(encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        if not isinstance(data, dict):
-            raise ValueError(f"{path} deve conter um mapping no topo")
-        return data
+            return yaml.safe_load(f)
 
     return _load
 

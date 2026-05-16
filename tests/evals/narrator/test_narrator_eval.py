@@ -42,13 +42,25 @@ _USER_ID = "eval"
 pytestmark = pytest.mark.eval
 
 
+_KEY_ATTR_BY_PROVIDER = {
+    "gemini_aistudio": "gemini_api_key",
+    "groq": "groq_api_key",
+    "openai": "openai_api_key",
+}
+
+
 @pytest.fixture(scope="module")
 def narrator_agent() -> LlmAgent:
-    import os
-
-    if not os.environ.get("GEMINI_API_KEY"):
-        pytest.skip("GEMINI_API_KEY ausente; eval contra LLM real ignorado.")
+    """Constrói o agente uma vez por módulo. Skip se a chave do provider
+    ativo (`LLM_PROVIDER`) não estiver presente no `.env` / `Settings`.
+    """
     settings = Settings()  # type: ignore[call-arg]
+    attr = _KEY_ATTR_BY_PROVIDER.get(settings.llm_provider)
+    if not attr or not getattr(settings, attr, ""):
+        pytest.skip(
+            f"Chave do provider '{settings.llm_provider}' ausente em .env; "
+            f"eval contra LLM real ignorado."
+        )
     provider = get_llm_provider(settings)
     return build_narrator_agent(provider)
 
@@ -141,20 +153,20 @@ async def test_narrator_eval_set(
         try:
             narration = await _narrate(runner, case)
         except Exception as exc:
-            report_lines.append(f"✗ {name:45s} — erro de invocação: {exc}")
+            report_lines.append(f"[X] {name:45s} — erro de invocação: {exc}")
             failures_total += 1
             continue
 
         case_failures = _check_narration(case, narration)
         if case_failures:
             failures_total += 1
-            report_lines.append(f"✗ {name}")
+            report_lines.append(f"[X] {name}")
             for f in case_failures:
                 report_lines.append(f"    · {f}")
             preview = narration[:200].replace("\n", " ")
             report_lines.append(f"    preview: {preview!r}")
         else:
-            report_lines.append(f"✓ {name:45s} ({len(narration):>4} chars)")
+            report_lines.append(f"[OK] {name:45s} ({len(narration):>4} chars)")
 
     report_lines.append("")
     report_lines.append(f"Total: {len(cases) - failures_total}/{len(cases)} passaram")

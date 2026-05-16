@@ -28,7 +28,7 @@ def _run_valid(cases: list[str]) -> tuple[int, list[str]]:
         verdict = validate_player_input(text)
         if not verdict.ok:
             failures.append(
-                f"  ✗ {text!r}\n"
+                f"  [X] {text!r}\n"
                 f"      → barrada como {verdict.category} (matched={verdict.matched!r})"
             )
     return len(cases) - len(failures), failures
@@ -41,10 +41,10 @@ def _run_abusive(
     for text in cases:
         verdict = validate_player_input(text)
         if verdict.ok:
-            failures.append(f"  ✗ {text!r}\n      → passou (deveria virar {category})")
+            failures.append(f"  [X] {text!r}\n      → passou (deveria virar {category})")
         elif verdict.category != category:
             failures.append(
-                f"  ⚠ {text!r}\n"
+                f"  [~] {text!r}\n"
                 f"      → pega como {verdict.category}, esperado {category}"
             )
     return len(cases) - len(failures), failures
@@ -86,7 +86,7 @@ def test_robustness_eval_set(load_cases: Callable[..., dict[str, Any]]) -> None:
         actual = "ok" if verdict.ok else f"barrada({verdict.category})"
         if (item["expected"] == "ok") != verdict.ok:
             border_misses.append(
-                f"  · {item['text']!r}\n"
+                f"  - {item['text']!r}\n"
                 f"      esperado={item['expected']}  atual={actual}\n"
                 f"      nota: {item.get('note', '')}"
             )

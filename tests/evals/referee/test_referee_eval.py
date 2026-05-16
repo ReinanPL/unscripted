@@ -11,7 +11,10 @@ consequências por modo.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import re
+import unicodedata
 from collections.abc import Callable
 from typing import Any
 
@@ -35,14 +38,27 @@ _USER_ID = "eval"
 pytestmark = pytest.mark.eval
 
 
+_KEY_ATTR_BY_PROVIDER = {
+    "gemini_aistudio": "gemini_api_key",
+    "groq": "groq_api_key",
+    "openai": "openai_api_key",
+}
+
+
 @pytest.fixture(scope="module")
 def referee_agent() -> LlmAgent:
-    """Constrói o agente uma vez por módulo — economiza setup nos cases."""
-    import os
+    """Constrói o agente uma vez por módulo — economiza setup nos cases.
 
-    if not os.environ.get("GEMINI_API_KEY"):
-        pytest.skip("GEMINI_API_KEY ausente; eval contra LLM real ignorado.")
-    settings = Settings()  # type: ignore[call-arg]  # carregado do ambiente
+    O provider ativo é definido por `LLM_PROVIDER` (env). Skip se a
+    chave correspondente não estiver no `.env` / `Settings`.
+    """
+    settings = Settings()  # type: ignore[call-arg]
+    attr = _KEY_ATTR_BY_PROVIDER.get(settings.llm_provider)
+    if not attr or not getattr(settings, attr, ""):
+        pytest.skip(
+            f"Chave do provider '{settings.llm_provider}' ausente em .env; "
+            f"eval contra LLM real ignorado."
+        )
     provider = get_llm_provider(settings)
     return build_referee_agent(provider)
 
@@ -102,7 +118,18 @@ async def _run_once(
             if text:
                 final_text = text
     assert final_text, "RefereeAgent não retornou conteúdo"
-    return Ruling.model_validate_json(final_text)
+    try:
+        return Ruling.model_validate_json(final_text)
+    except Exception:
+        print(f"\n    JSON bruto recebido:\n    {final_text[:500]}\n")
+        raise
+
+
+def _strip_accents(text: str) -> str:
+    """Remove acentos para comparação tolerante (Persuasao ↔ Persuasão)."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
+    )
 
 
 def _check_case(case: dict[str, Any], ruling: Ruling) -> list[str]:
@@ -118,8 +145,8 @@ def _check_case(case: dict[str, Any], ruling: Ruling) -> list[str]:
 
     if expected.get("precisa_rolagem"):
         kws: list[str] = expected.get("pericia_keywords") or []
-        pericia = (ruling.pericia or "").lower()
-        if kws and not any(k.lower() in pericia for k in kws):
+        pericia_norm = _strip_accents((ruling.pericia or "").lower())
+        if kws and not any(_strip_accents(k.lower()) in pericia_norm for k in kws):
             failures.append(
                 f"pericia {ruling.pericia!r} não contém nenhuma de {kws}"
             )
@@ -158,22 +185,45 @@ async def test_referee_eval_set(
 
     for case in cases:
         name = case["name"]
-        try:
-            ruling = await _run_once(
-                runner,
-                action=case["action"],
-                state_summary=case["state_summary"],
-                rules_context=case.get("rules_context", ""),
+        ruling = None
+        last_exc: Exception | None = None
+        # Retry com backoff específico para rate limit (Groq TPM ~ 12K/min).
+        for attempt in range(3):
+            try:
+                ruling = await _run_once(
+                    runner,
+                    action=case["action"],
+                    state_summary=case["state_summary"],
+                    rules_context=case.get("rules_context", ""),
+                )
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                msg = str(exc)
+                if "rate_limit" in msg.lower() or "RateLimitError" in msg:
+                    wait_match = re.search(r"try again in ([\d.]+)s", msg)
+                    wait_s = float(wait_match.group(1)) + 1 if wait_match else 12
+                    print(
+                        f"    rate-limit em {name}, attempt {attempt + 1}; "
+                        f"aguardando {wait_s:.1f}s e tentando de novo"
+                    )
+                    await asyncio.sleep(wait_s)
+                    continue
+                break
+        if ruling is None:
+            report_lines.append(
+                f"[X] {name:35s} - erro de invocacao: {last_exc}"
             )
-        except Exception as exc:
-            report_lines.append(f"✗ {name:35s} — erro de invocação: {exc}")
             failures_total += 1
+            # Pausa curta entre cases pra distribuir o consumo de TPM.
+            await asyncio.sleep(2)
             continue
 
         case_failures = _check_case(case, ruling)
         if case_failures:
             failures_total += 1
-            report_lines.append(f"✗ {name}")
+            report_lines.append(f"[X] {name}")
             for f in case_failures:
                 report_lines.append(f"    · {f}")
             report_lines.append(
@@ -182,8 +232,10 @@ async def test_referee_eval_set(
             )
         else:
             report_lines.append(
-                f"✓ {name:35s} pericia={ruling.pericia!r} dc={ruling.dificuldade}"
+                f"[OK] {name:35s} pericia={ruling.pericia!r} dc={ruling.dificuldade}"
             )
+        # Pausa entre cases pra distribuir o consumo de TPM (Groq).
+        await asyncio.sleep(2)
 
     report_lines.append("")
     report_lines.append(f"Total: {len(cases) - failures_total}/{len(cases)} passaram")

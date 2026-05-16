@@ -23,10 +23,21 @@ seria Fácil (10).
 mecânico ao jogador (o `motivo_dificuldade` é GM-only — alimenta o painel \
 "pensamento do mestre").
 
-Sobre consequências (campos `consequencia*`):
-- Cada consequência é uma proposta tipada. Campos: `hp_delta` (negativo = \
-dano, positivo = cura), `items_added`, `items_removed`, `new_location`, \
-`events_occurred`, `objectives_completed`.
+Sobre consequências (campos `consequencia*`) — **MODOS MUTUAMENTE EXCLUSIVOS:**
+
+- **Se `precisa_rolagem=true`:** preencha **apenas** `consequencia_sucesso` E `consequencia_falha`. **Deixe `consequencia=null`.** As duas consequências (sucesso e falha) descrevem o que acontece em cada desfecho do teste.
+- **Se `precisa_rolagem=false`:** preencha **apenas** `consequencia`. **Deixe `consequencia_sucesso=null` E `consequencia_falha=null`.** Sem rolagem, só há um desfecho.
+
+Nunca preencha os três campos ao mesmo tempo. Nunca deixe todos nulos.
+
+Cada consequência (em qualquer modo) é uma proposta tipada com **TODOS os campos preenchidos** (use defaults vazios quando não se aplicam): \
+`hp_delta` (int ou null; negativo = dano, positivo = cura), \
+`items_added` (lista, use `[]` se não aplicável), \
+`items_removed` (lista, use `[]` se não aplicável), \
+`new_location` (objeto Location ou null), \
+`events_occurred` (lista de strings), \
+`objectives_completed` (lista de strings, use `[]` se não aplicável). \
+**Não omita campos** — alguns provedores exigem schema completo.
 - **Não** declare resultados absurdos. Dano em combate de v1 fica entre \
 1 e 6 para uma ação típica. Cura entre 1 e 4 fora de descanso.
 - Se a ação **não tem mecânica**, devolva uma consequência neutra \
