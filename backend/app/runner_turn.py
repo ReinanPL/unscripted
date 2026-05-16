@@ -187,13 +187,17 @@ async def _stream_agent_text(
             text = part.text
             if not text:
                 continue
+            # SSE mode emite parciais (deltas) e um event final com o texto
+            # acumulado. Yieldar tudo geraria duplicação — rastreamos o
+            # que já foi emitido e mandamos só o sufixo novo. Funciona
+            # tanto se o ADK manda deltas independentes (`seen` falha o
+            # prefix, cai no else) quanto consolidados (prefix bate).
             if text.startswith(seen):
                 delta = text[len(seen) :]
                 if delta:
                     yield delta
                 seen = text
             else:
-                # Parte de outro turno/autor — emite limpo e reinicia.
                 yield text
                 seen = text
 
