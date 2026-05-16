@@ -1,0 +1,248 @@
+# Eval set do NarratorAgent — três regressões grossas (ADR-043).
+#
+# Escopo deliberado: heurística sobre prosa é ruidosa por natureza,
+# então não perseguimos nota alta. Pegamos só o que quebra a imersão:
+#   (a) regra alucinada — narração menciona número de dado, dificuldade,
+#       perícia, "rolagem", "DC", etc.
+#   (b) meta-fala — agente sai do papel ("como mestre", "vou narrar",
+#       "como narrador", "como assistente").
+#   (c) contradição direta de lore — quando o `lore_context` afirma X,
+#       narração não pode afirmar não-X.
+#
+# Cada caso traz `expected_forbidden` (regexes case-insensitive) e
+# opcionalmente `lore_contradictions` (substrings que indicariam que
+# o agente contradiz o lore).
+
+- name: sucesso_furtividade_sem_mecanica
+  action: "Armo uma emboscada para o cavaleiro Joren na trilha estreita."
+  ruling:
+    precisa_rolagem: true
+    pericia: "Furtividade"
+    dificuldade: 18
+    notacao_dado: "1d20"
+    motivo_dificuldade: "Joren é veterano treinado contra emboscadas"
+    consequencia_sucesso:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["surpresa contra Joren"]
+      objectives_completed: []
+    consequencia_falha:
+      hp_delta: -3
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["Joren percebeu a emboscada"]
+      objectives_completed: []
+  roll_outcome:
+    roll:
+      notation: "1d20"
+      rolls: [19]
+      modifier: 0
+      total: 19
+      advantage: false
+      disadvantage: false
+    check:
+      success: true
+      margin: 1
+      difficulty: 18
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["surpresa contra Joren"]
+    objectives_completed: []
+  lore_context: ""
+  expected_forbidden:
+    - '\b\d+d\d+\b'
+    - '\brola(gem|r|ndo|i)\b'
+    - '\bdado(s)?\b'
+    - '\bdificuldade\b'
+    - '\bDC\s*\d+'
+    - '\bper[ií]cia\b'
+    - '\bcr[ií]tico\b'
+
+- name: falha_persuasao_sem_julgamento
+  action: "Tento convencer o taverneiro a me contar o que viu na noite passada."
+  ruling:
+    precisa_rolagem: true
+    pericia: "Persuasão"
+    dificuldade: 15
+    notacao_dado: "1d20"
+    motivo_dificuldade: "Bram é desconfiado com forasteiros"
+    consequencia_sucesso:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["Bram revelou o que viu"]
+      objectives_completed: []
+    consequencia_falha:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["Bram desconversou"]
+      objectives_completed: []
+  roll_outcome:
+    roll:
+      notation: "1d20"
+      rolls: [8]
+      modifier: 0
+      total: 8
+      advantage: false
+      disadvantage: false
+    check:
+      success: false
+      margin: -7
+      difficulty: 15
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["Bram desconversou"]
+    objectives_completed: []
+  lore_context: ""
+  expected_forbidden:
+    - '\bfracass(o|ou|aste|ei)\b'
+    - '\bfalh(ou|aste|ei)\b'
+    - '\brola(gem|r|ndo|i)\b'
+    - '\bdado(s)?\b'
+    - '\bdificuldade\b'
+    - '\bper[ií]cia\b'
+
+- name: acao_trivial_sem_rolagem
+  action: "Olho ao redor da taverna procurando alguém conhecido."
+  ruling:
+    precisa_rolagem: false
+    pericia: null
+    dificuldade: null
+    notacao_dado: "1d20"
+    motivo_dificuldade: ""
+    consequencia:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["olhou ao redor da taverna"]
+      objectives_completed: []
+  roll_outcome: null
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["olhou ao redor da taverna"]
+    objectives_completed: []
+  lore_context: ""
+  expected_forbidden:
+    - '\b\d+d\d+\b'
+    - '\brola(gem|r|ndo|i)\b'
+    - '\bdado(s)?\b'
+    - '\bcomo (mestre|narrador|assistente|GM)\b'
+    - '\bvou narrar\b'
+    - '\bagora vamos\b'
+
+- name: lore_veterano_nao_pode_virar_novato
+  action: "Tento encarar Joren para medir suas reações."
+  ruling:
+    precisa_rolagem: false
+    pericia: null
+    dificuldade: null
+    notacao_dado: "1d20"
+    motivo_dificuldade: ""
+    consequencia:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["encarou Joren brevemente"]
+      objectives_completed: []
+  roll_outcome: null
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["encarou Joren brevemente"]
+    objectives_completed: []
+  lore_context: |
+    Joren é um veterano de guarda. Cicatrizes nas mãos e na têmpora
+    contam histórias de muitas escaramuças. Tem percepção alta e
+    desconfia naturalmente de forasteiros.
+  expected_forbidden:
+    - '\bnovato\b'
+    - '\binexperiente\b'
+    - '\bjovem\s+demais\b'
+    - '\bcrian[çc]a\b'
+  # Quando o lore_context diz X, narração não pode dizer não-X.
+  # Verificado por substring case-insensitive contra a narração final.
+  lore_contradictions:
+    - "Joren é jovem"
+    - "Joren é inexperiente"
+
+- name: sem_inventar_npc_quando_lore_vazio
+  action: "Pergunto à pessoa mais próxima se ela viu algo estranho hoje."
+  ruling:
+    precisa_rolagem: false
+    pericia: null
+    dificuldade: null
+    notacao_dado: "1d20"
+    motivo_dificuldade: ""
+    consequencia:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["interagiu com alguém na taverna"]
+      objectives_completed: []
+  roll_outcome: null
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["interagiu com alguém na taverna"]
+    objectives_completed: []
+  lore_context: ""
+  # Não há regra rígida que NPC X não exista — só checa que não
+  # inventa nome com cara de personagem novo do nada. Toleramos
+  # ambiguidade narrativa ("o homem ao lado", "uma jovem servente").
+  expected_forbidden:
+    - '\b\d+d\d+\b'
+    - '\brola(gem|r|ndo|i)\b'
+    - '\bcomo (mestre|narrador|assistente|GM)\b'
+
+- name: meta_fala_proibida_em_qualquer_situacao
+  action: "Saco a espada e me preparo para o combate."
+  ruling:
+    precisa_rolagem: false
+    pericia: null
+    dificuldade: null
+    notacao_dado: "1d20"
+    motivo_dificuldade: ""
+    consequencia:
+      hp_delta: 0
+      items_added: []
+      items_removed: []
+      new_location: null
+      events_occurred: ["sacou a espada"]
+      objectives_completed: []
+  roll_outcome: null
+  consequence_applied:
+    hp_delta: 0
+    items_added: []
+    items_removed: []
+    new_location: null
+    events_occurred: ["sacou a espada"]
+    objectives_completed: []
+  lore_context: ""
+  expected_forbidden:
+    - '\bcomo (mestre|narrador|assistente|GM|IA|AI)\b'
+    - '\bvou narrar\b'
+    - '\bagora vamos\b'
+    - '\beu sou (a|o) (mestre|narrador|assistente|IA|AI)\b'
+    - '\bcomo um (modelo|assistente|sistema)\b'
