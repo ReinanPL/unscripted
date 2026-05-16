@@ -1,6 +1,6 @@
 # PLANO DE IMPLEMENTAÇÃO — v1
 
-**Projeto:** Mestre / Unscripted
+**Projeto:** Unscripted
 **Documentos relacionados:** `PRD.md` (o quê e por quê), `ARQUITETURA.md` (como), `DECISOES.md` (histórico das decisões).
 
 > Este documento é o **mapa de execução** da v1. Detalha cada fase da seção "Ordem de build" do `ARQUITETURA.md` (§20) em tarefas concretas, com entregas e critérios objetivos de "fase concluída". É um documento vivo — ajustes feitos durante a implementação voltam para cá, e decisões novas viram ADRs no `DECISOES.md`.
@@ -63,7 +63,7 @@ Nenhum código de agente, motor, RAG, ou frontend. Aqui é só fundação.
 
 ## Fase 1 — Esqueleto: loop de turno mínimo
 
-**Objetivo.** Provar o **loop de ponta a ponta** do backend: jogador manda texto → agente narra de volta. Um único agente, sessão em memória, zero regras. É o "Hello World" do Mestre.
+**Objetivo.** Provar o **loop de ponta a ponta** do backend: jogador manda texto → agente narra de volta. Um único agente, sessão em memória, zero regras. É o "Hello World" do Unscripted.
 
 **Tarefas.**
 

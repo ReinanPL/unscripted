@@ -1,6 +1,6 @@
 # PRD — Documento de Requisitos do Produto
 
-**Projeto:** Mestre (codinome provisório)
+**Projeto:** Unscripted
 **Tipo:** RPG de mesa single-player com Game Master de Inteligência Artificial
 **Status:** Planejamento — pré-implementação
 **Idioma deste documento:** Português
@@ -11,7 +11,7 @@
 
 ## 1. Visão geral e propósito
 
-O Mestre é uma aplicação web que permite a uma pessoa jogar uma aventura de RPG de mesa tendo a Inteligência Artificial no papel de **Game Master** (mestre do jogo): a entidade que narra o mundo, interpreta os personagens não-jogáveis, arbitra as ações do jogador e descreve as consequências.
+O Unscripted é uma aplicação web que permite a uma pessoa jogar uma aventura de RPG de mesa tendo a Inteligência Artificial no papel de **Game Master** (mestre do jogo): a entidade que narra o mundo, interpreta os personagens não-jogáveis, arbitra as ações do jogador e descreve as consequências.
 
 O projeto tem dois propósitos simultâneos e igualmente válidos:
 
@@ -34,7 +34,7 @@ A palavra central é **tenta**. O jogador declara intenção, nunca resultado. "
 
 ## 3. Conceito do produto
 
-O Mestre é, em essência, um **livro-jogo conversacional**: o jogador progride por uma história em capítulos, e em vez de escolher entre opções pré-escritas, **descreve livremente** o que quer fazer. Combina a liberdade de uma mesa de RPG com a acessibilidade de uma aplicação single-player.
+O Unscripted é, em essência, um **livro-jogo conversacional**: o jogador progride por uma história em capítulos, e em vez de escolher entre opções pré-escritas, **descreve livremente** o que quer fazer. Combina a liberdade de uma mesa de RPG com a acessibilidade de uma aplicação single-player.
 
 A referência mental: imagine um jogo de ficção interativa só-texto (estilo Zork) modernizado — com um painel de personagem ao lado, um mapa de progresso, feedback visual reativo, e um mestre que entende linguagem natural livre em vez de comandos fixos.
 

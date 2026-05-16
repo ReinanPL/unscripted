@@ -1,6 +1,6 @@
 # ARQUITETURA — Documento de Arquitetura Técnica
 
-**Projeto:** Mestre (codinome provisório)
+**Projeto:** Unscripted
 **Status:** Planejamento — pré-implementação
 **Documentos relacionados:** `PRD.md` (o quê e por quê), `DECISOES.md` (histórico das decisões)
 
@@ -10,7 +10,7 @@
 
 ## 1. Visão geral da arquitetura
 
-O Mestre é uma aplicação web conteinerizada com três grandes blocos:
+O Unscripted é uma aplicação web conteinerizada com três grandes blocos:
 
 1. **Frontend** — aplicação web (React/Vite/TypeScript) com as três zonas de interface. Não fala com o LLM diretamente; conversa apenas com o backend.
 2. **Backend** — aplicação Python (FastAPI) que expõe a API do jogo, orquestra os agentes de IA (Google ADK), roda o motor de regras determinístico, e faz RAG.
@@ -330,7 +330,7 @@ Duas frentes, correspondendo à fronteira determinístico/LLM:
 Separação clara entre backend e frontend, com estrutura interna padronizada — o suficiente para consistência, sem burocracia. Esboço de referência:
 
 ```
-mestre/
+unscripted/
 ├── README.md
 ├── LICENSE                     # MIT ou Apache 2.0
 ├── CONTRIBUTING.md

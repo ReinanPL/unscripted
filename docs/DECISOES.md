@@ -1,6 +1,6 @@
 # DECISÕES — Registro de Decisões de Arquitetura (ADR)
 
-**Projeto:** Mestre (codinome provisório)
+**Projeto:** Unscripted
 **Documentos relacionados:** `PRD.md` (o quê e por quê), `ARQUITETURA.md` (como)
 
 > Este documento preserva **o raciocínio**, não só as conclusões. Cada entrada registra o contexto, as alternativas consideradas, a decisão tomada e suas consequências. É a memória do projeto — serve para que, semanas depois, ninguém reabra uma discussão já encerrada nem esqueça por que algo foi decidido. Novas decisões, tomadas durante a implementação, devem ser adicionadas aqui.
@@ -11,7 +11,7 @@
 
 ## ADR-001 — Gênero: RPG narrativo textual, não CRPG
 
-**Contexto.** Era preciso definir que tipo de jogo o Mestre é. Havia a dúvida de over-engineering: usar IA para algo que um motor de regras determinístico faria melhor e mais barato.
+**Contexto.** Era preciso definir que tipo de jogo o Unscripted é. Havia a dúvida de over-engineering: usar IA para algo que um motor de regras determinístico faria melhor e mais barato.
 
 **Opções consideradas.**
 - Um CRPG: navegação por grid, menus de ação fixos, combate com opções pré-definidas — resolvido por um motor de regras determinístico, com pouca ou nenhuma IA.
@@ -73,7 +73,7 @@
 
 **Decisão.** Descartar MCP. Usar `FunctionTool` do ADK.
 
-**Consequências.** As ferramentas do Mestre são internas ao backend; não há serviço externo a integrar. MCP introduziria conexões stateful e sobrecarga de infraestrutura sem resolver um problema que o projeto tem. `FunctionTool` é mais simples e direto. A flexibilidade de troca que se poderia querer já é dada pela camada de providers (ADR-009). Decisão alinhada ao princípio de complexidade proporcional (ADR explícito em `ARQUITETURA.md` §2.2).
+**Consequências.** As ferramentas do Unscripted são internas ao backend; não há serviço externo a integrar. MCP introduziria conexões stateful e sobrecarga de infraestrutura sem resolver um problema que o projeto tem. `FunctionTool` é mais simples e direto. A flexibilidade de troca que se poderia querer já é dada pela camada de providers (ADR-009). Decisão alinhada ao princípio de complexidade proporcional (ADR explícito em `ARQUITETURA.md` §2.2).
 
 ---
 
