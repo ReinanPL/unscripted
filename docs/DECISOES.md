@@ -948,6 +948,57 @@ Para **a interface no código**:
 
 ---
 
+## ADR-048 — Sincronia texto+voz no nível de frase, orquestrada pelo backend
+
+**Contexto.** Com TTS turno-inteiro funcionando (ADR-047 + ADR-049), o áudio chega depois do texto terminar: backend gera narração completa (~10-20s), frontend recebe `done`, só então POSTa pro `/voice/tts`, OpenAI gera MP3 do texto inteiro (~2-5s). Total: o áudio começa visivelmente atrasado em relação ao texto. Quebra a promessa de "voz na mesma pegada do texto" que motiva a feature.
+
+A questão central é: **onde reside a fonte de verdade do tempo da narração?** No backend, que vê os chunks do LLM primeiro. Qualquer sincronia precisa nascer ali.
+
+**Opções consideradas.**
+
+- **A — Sincronia no nível de FRASE, backend orquestra (A1).** `process_turn` mantém um buffer dos chunks do Narrator; quando detecta fim de frase (regex `[.!?…]\s+` ou `\n`), dispara `asyncio.create_task(tts.synthesize(frase))` em background e emite `audio_sentence` (base64 + índice) no **mesmo SSE** do texto. Frontend enfileira por ordem de índice. Custo: ~$0.001/turno, complexidade baixa, sem deps novas, encaixa na estética editorial do projeto.
+
+- **A2 — Sincronia de frase, frontend orquestra.** Mesmo conceito mas o frontend detecta fim de frase e chama `POST /voice/tts` por frase. Duplica a lógica de detecção (back + front), expõe a chave OpenAI via mais roundtrips, e o backend perde visibilidade do que o jogador ouve. Rejeitada.
+
+- **B — Sincronia no nível de PALAVRA (karaokê).** Cada palavra do texto "acende" quando o TTS a fala. Exige timestamps por palavra: OpenAI Realtime API (WebSocket novo, ~10x custo), forced alignment local (lib pesada, possivelmente GPU), ou re-Whisper do áudio gerado (dobra custo + latência). Karaokê palavra-a-palavra é UX explicitamente de produto de IA (Spotify lyrics, Suno) — choca com a identidade "livro-jogo editorial" que a Fase 6 da v1 protegeu. Rejeitada.
+
+**Decisão.** **Opção A1 — sincronia de frase, backend orquestra.**
+
+Razões:
+- **Princípio "frontend só fala com backend".** Toda chamada à OpenAI fica em `providers/tts.py`. A2 arranharia esse isolamento.
+- **Fonte de verdade do tempo.** O backend vê os chunks do LLM primeiro — detector de frase mora onde a informação chega primeiro. Frontend só consome áudio pronto.
+- **Complexidade proporcional.** Detector de frase é regex puro; `useAudioQueue` no frontend já existe e toca em sequência. Sem dependência nova.
+- **Estética.** Karaokê palavra-a-palavra (B) custaria uma semana+ e dependência nova para ganhar, na melhor hipótese, ~1s de latência, e pioraria a sensação de "leitura editorial" para a de "produto de IA". B custa mais e piora o produto na dimensão estética.
+
+**Especificação técnica.**
+
+1. **`SentenceBuffer`** em `backend/app/agents/sentence_buffer.py`: função pura que recebe chunks de texto e emite frases completas. Detector de fim de frase: `[.!?…]\s+` ou `\n`. Trata: decimais (`3.5`), reticências (`…` e `...`), ponto final fim-de-buffer (sem trailing space), abreviações comuns (`Sr.`, `etc.`, `Dr.`), aspas/itálicos colados ao terminador. Testes determinísticos por caso.
+
+2. **`_stream_agent_text` em `runner_turn.py`** integra `SentenceBuffer`. Quando frase fecha: `asyncio.create_task(tts_provider.synthesize(frase, voice=...))`. Cada task tem índice sequencial. Quando o áudio fica pronto, yield `TurnEvent(type="audio_sentence", index=i, audio_b64=..., mime="audio/mpeg")` no mesmo gerador — mantém ordem por índice no frontend.
+
+3. **`ActionRequest.tts_enabled: bool = False`** no Pydantic do endpoint `/action`. `action_endpoint` propaga para `process_turn`. Quando `False`, **zero chamadas** à OpenAI são feitas — custo zero quando off (default).
+
+4. **Frontend**: `ActionEvent` ganha variante `audio_sentence`. `sse.ts` parseia o novo tipo. `Play.tsx` decodifica base64 → Blob → `useAudioQueue.enqueue(blob)`. Sem mudança no `useAudioQueue` existente — turno-inteiro vira N enqueues sequenciais.
+
+5. **Tratamento de falha (ADR-020 estendido).** Se TTS de uma frase falhar/timeout, log estruturado, evento `audio_sentence` daquela frase **não** é emitido, próxima frase segue. Texto não é afetado. Trace do turno registra `tts_errors`.
+
+6. **Toggle off mid-turno.** Frontend: `useAudioQueue.clear()` para áudio e descarta fila. Backend já não vai gerar mais (vê `tts_enabled` no turno seguinte). Áudios em-voo do turno atual chegam e são descartados pelo frontend.
+
+**Consequências.**
+
+- **Cadência casa.** Primeira frase de áudio chega ~1-2s depois da frase aparecer no texto. Depois empata. "Mesma pegada" cumprida.
+- **TTS turno-inteiro do Bloco 2** é substituído. O caminho `Play.tsx → ttsToBlob(narraçãoCompleta) → useAudioQueue` é removido — passa a vir tudo pelo SSE.
+- **Sem mudança na fila de áudio.** `useAudioQueue` já toca em sequência; agora recebe N blobs por turno em vez de 1. Comportamento idêntico ao jogador.
+- **Custo total não muda.** Mesma quantidade de chars sintetizados; só fragmentado em chamadas menores. Pode até reduzir picos de latência da OpenAI.
+- **Cache de TTS por frase** (otimização futura) fica natural — frases repetidas tipo "Você não consegue." poderiam ser cacheadas. Fora de escopo agora.
+
+**Limites conhecidos e aceitos.**
+- Frases muito curtas (`"— Não."`) viram chamadas TTS isoladas com overhead per-request alto. Aceitável; custo absoluto continua negligível.
+- Se a primeira frase do Narrator demora a fechar (LLM emite chunks longos), a latência da 1ª frase de áudio aumenta proporcionalmente. Sem mitigação no Bloco 3; volta a aparecer só se observado.
+- Se um caractere terminador de frase for emitido em chunks separados (ex.: chunk1=`"alerta"`, chunk2=`"."`, chunk3=`" Observando"`), o detector ainda funciona porque o buffer concatena antes de procurar terminadores. Coberto nos testes.
+
+---
+
 ## ADR-049 — Toggle de narração falada no frontend; voz default `echo`
 
 **Contexto.** Com o TTS real entrando (ADR-047), todo turno pode virar áudio falado. Mas nem todo jogador quer voz: alguns leem mais rápido que ouvem, outros estão em ambiente que não comporta som, outros simplesmente querem custo zero (cada turno com TTS ON dispara uma chamada de ~$0.001 ao gpt-4o-mini-tts). Sem um toggle, o jogador é refém de uma escolha global.
