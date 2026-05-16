@@ -19,6 +19,9 @@ import type { ActionEvent } from "./types";
 
 export interface StreamActionOptions {
   signal?: AbortSignal;
+  /** Quando true, o backend dispara TTS por frase e emite `audio_sentence`
+   *  no SSE (ADR-048). Default false — texto puro, custo zero. */
+  ttsEnabled?: boolean;
 }
 
 export async function* streamAction(
@@ -36,7 +39,7 @@ export async function* streamAction(
           "Content-Type": "application/json",
           Accept: "text/event-stream, application/json",
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, tts_enabled: !!options.ttsEnabled }),
         signal: options.signal,
       },
     );

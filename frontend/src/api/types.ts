@@ -123,6 +123,7 @@ export interface GraphResponse {
 export type ActionEventType =
   | "chunk"
   | "npc_chunk"
+  | "audio_sentence"
   | "done"
   | "error"
   | "error_preserve_input"
@@ -134,6 +135,10 @@ export interface ActionEvent {
   npc_id?: string | null;
   turn_number?: number | null;
   category?: string | null;
+  // Campos do audio_sentence (ADR-048): índice da frase no turno + MP3 base64.
+  sentence_index?: number | null;
+  audio_b64?: string;
+  mime?: string;
 }
 
 // ===== Trace / pensamento do mestre =====
@@ -216,4 +221,5 @@ export interface TurnTrace {
   npc_reaction?: string | null;
   npc_id?: string | null;
   error?: string | null;
+  tts_errors: string[];
 }

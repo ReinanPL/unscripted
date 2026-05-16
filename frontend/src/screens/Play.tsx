@@ -16,7 +16,6 @@ import {
   isNetworkError,
   isNotFound,
   streamAction,
-  ttsToBlob,
 } from "../api";
 import type {
   ActionEvent,
@@ -190,19 +189,22 @@ export function Play() {
 
     let consumed = false;
     let consumedTurnNumber: number | null = null;
-    // Acumulamos a narração e as falas de NPC em variáveis locais durante
-    // o stream, em vez de depender do callback do setTurns (que React 18
-    // pode agendar fora do tempo do `for await`, fazendo `consumedNarration`
-    // chegar vazia no finally).
-    let narrationAcc = "";
-    const npcAcc = new Map<string, string>();
     try {
-      for await (const ev of streamAction(campaignId, text)) {
-        if (ev.type === "chunk") {
-          narrationAcc += ev.text;
-        } else if (ev.type === "npc_chunk") {
-          const id = ev.npc_id ?? "npc";
-          npcAcc.set(id, (npcAcc.get(id) ?? "") + ev.text);
+      for await (const ev of streamAction(campaignId, text, {
+        ttsEnabled,
+      })) {
+        if (ev.type === "audio_sentence" && ev.audio_b64) {
+          // Sincronia frase-a-frase (ADR-048): cada audio_sentence chega
+          // em ordem garantida pelo backend; enqueueia direto na fila.
+          const blob = base64ToBlob(ev.audio_b64, ev.mime ?? "audio/mpeg");
+          audioQueue.enqueue(blob);
+          console.info(
+            "[tts] sentence",
+            ev.sentence_index,
+            "enqueued",
+            blob.size,
+            "bytes",
+          );
         }
         consumed = consumeEvent(ev, {
           setTurns,
@@ -232,32 +234,6 @@ export function Play() {
     } finally {
       setStreaming(false);
       if (consumed && campaignId) {
-        // TTS turno-inteiro (Bloco 2 / ADR-049): com toggle ligado e
-        // narração disponível, pede o áudio do turno e enfileira no
-        // useAudioQueue. Sincronia frase-a-frase entra no Bloco 3.
-        const consolidated = consolidateForTts(narrationAcc, npcAcc);
-        console.warn("[tts] finally", {
-          ttsEnabled,
-          narrationLen: narrationAcc.length,
-          npcCount: npcAcc.size,
-          consolidatedLen: consolidated.length,
-        });
-        if (ttsEnabled && consolidated) {
-          console.info("[tts] requesting", consolidated.length, "chars");
-          ttsToBlob(consolidated)
-            .then((blob) => {
-              if (blob) {
-                console.info("[tts] received blob", blob.size, "bytes");
-                audioQueue.enqueue(blob);
-              } else {
-                console.warn("[tts] backend returned empty audio");
-              }
-            })
-            .catch((err) => {
-              console.error("[tts] request failed", err);
-            });
-        }
-
         // Recarrega state e graph para refletir mutacoes deterministicas
         // (location nova, locations_revealed expandido).
         getCampaignState(campaignId)
@@ -396,15 +372,13 @@ interface ConsumeArgs {
   t: (key: string) => string;
 }
 
-function consolidateForTts(narration: string, npcs: Map<string, string>): string {
-  const parts: string[] = [];
-  const main = narration.trim();
-  if (main) parts.push(main);
-  for (const text of npcs.values()) {
-    const trimmed = text.trim();
-    if (trimmed) parts.push(trimmed);
+function base64ToBlob(b64: string, mime: string): Blob {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
   }
-  return parts.join("\n\n");
+  return new Blob([bytes], { type: mime || "audio/mpeg" });
 }
 
 function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
@@ -446,6 +420,11 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
           return { ...turn, npcChunks };
         }),
       );
+      return false;
+    }
+    case "audio_sentence": {
+      // Tratado direto no handleSubmit (enqueue na audioQueue). Não
+      // muta turns — só passa adiante sem consumir.
       return false;
     }
     case "done": {
