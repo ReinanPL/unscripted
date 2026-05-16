@@ -13,6 +13,7 @@
 import { useT } from "../i18n";
 import type { GraphResponse } from "../api/types";
 import { Compass } from "./Compass";
+import { MapDecorations } from "./MapDecorations";
 import { MapGlyph } from "./MapGlyphs";
 
 const VIEW_W = 800;
@@ -147,6 +148,11 @@ function GraphSvg({ graph }: { graph: GraphResponse }) {
         className="location-graph__parchment"
         filter="url(#graph-parchment)"
       />
+
+      {/* Ornamentação cartográfica decorativa — árvores, rio,
+          topônimo. Fica acima do fundo texturizado e abaixo das
+          arestas/nós para não competir com a interação. */}
+      <MapDecorations vb={vb} />
 
       {/* Título caligráfico da região (ADR-041) — só renderiza se o
           capítulo declarou `map_title`. */}
