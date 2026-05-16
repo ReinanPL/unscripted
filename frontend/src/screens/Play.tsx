@@ -168,6 +168,14 @@ export function Play() {
     if (!campaignId || streaming) return;
     const text = input.trim();
     if (!text) return;
+    // Diagnóstico: console.warn sobrevive a qualquer filtro default.
+    console.warn("[tts] submit", { ttsEnabled });
+    if (ttsEnabled) {
+      // Destrava autoplay aproveitando este click como user gesture.
+      // Cobre o caso "toggle restaurado do localStorage sem click direto"
+      // — sem isso, o blob real cai num play() bloqueado silenciosamente.
+      audioQueue.unlock();
+    }
     setBanner(null);
 
     const provisional: NarrationTurn = {
