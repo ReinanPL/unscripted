@@ -948,4 +948,41 @@ Para **a interface no código**:
 
 ---
 
+## ADR-049 — Toggle de narração falada no frontend; voz default `echo`
+
+**Contexto.** Com o TTS real entrando (ADR-047), todo turno pode virar áudio falado. Mas nem todo jogador quer voz: alguns leem mais rápido que ouvem, outros estão em ambiente que não comporta som, outros simplesmente querem custo zero (cada turno com TTS ON dispara uma chamada de ~$0.001 ao gpt-4o-mini-tts). Sem um toggle, o jogador é refém de uma escolha global.
+
+Duas decisões precisam ficar registradas: **(1)** onde mora o estado do toggle e **(2)** qual é a voz default.
+
+**Opções consideradas — (1) onde mora o toggle:**
+- **A — `localStorage`, default off, frontend-only.** Persiste entre F5/sessões, custo zero quando off, sem precisar autenticação.
+- **B — Parte do `GameState` (persistido no Postgres).** Per-partida. Mais "rico" mas exige migration + endpoint para atualizar. Não paga o aluguel hoje (Princípio 2) — voz é preferência do dispositivo, não da campanha.
+- **C — Cookie.** Mesmo que A mas com semântica de servidor — sem vantagem real, perde a chave clara `unscripted.tts_enabled`.
+
+**Opções consideradas — (2) voz default:**
+A OpenAI oferece 11+ vozes em `gpt-4o-mini-tts` (alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse). Para a v1 da fase de voz, geramos amostras das 5 mais comumente recomendadas para narração — `alloy` (neutra default), `sage` (calma), `echo` (grave, sóbria), `coral` (feminina expressiva), `shimmer` (feminina luminosa). O dono ouviu os MP3s gerados a partir do `read_aloud` da starting_scene do capítulo 1 (`scripts/sample_tts_voices.py`).
+
+**Decisão.**
+
+- **Toggle:** Opção A. Hook `useTtsToggle` em `frontend/src/state/useTtsToggle.ts` lê/escreve em `localStorage` na chave `unscripted.tts_enabled` (valores `"true"` | `"false"`). Default **off**. Sincroniza entre abas via evento `storage`. Falha de `localStorage` (contexto inseguro) cai pra memória — não fatal.
+
+- **Voz default:** **`echo`**. Tom grave e sóbrio que casa com a estética de "livro-jogo editorial" do Unscripted (a regra inegociável da skill `mestre-frontend`: nada de cara de "produto de IA"). Vozes mais "brilhantes" como `shimmer` ou expressivas como `coral` puxam pra estética de assistente virtual; vozes neutras como `alloy` ficam genéricas. `echo` favorece a sensação de **mestre conduzindo a narrativa** em vez de IA falando texto.
+
+- **Mecanismo de override:** voz é configurável por env (`OPENAI_TTS_VOICE`). Trocar é editar o `.env` e reiniciar — sem rebuild. Útil para A/B local sem mudar código.
+
+**Consequências.**
+
+- `frontend/src/state/useTtsToggle.ts`: hook + persistência.
+- `frontend/src/components/TtsToggle.tsx`: botão no header da zona play, ícone alto-falante (riscado quando off).
+- `frontend/src/state/useAudioQueue.ts`: fila de áudios que toca em sequência. `clear()` interrompe quando o toggle desliga mid-turno.
+- `Play.tsx`: quando `done` chega no SSE **e** `ttsEnabled === true`, chama `POST /voice/tts` com a narração consolidada do turno e enfileira o blob. Quando o toggle desliga, chama `audioQueue.clear()`.
+- `.env.example` e `.env`: `OPENAI_TTS_VOICE=echo`.
+- Esta decisão fecha o Bloco 2 do plano da fase de voz: TTS turno-inteiro funcional, com toggle. Sincronia frase-a-frase (Bloco 3) chega em seguida usando exatamente esta mesma fila — só muda como o backend produz os áudios.
+
+**Limites conhecidos.**
+- A voz default vale para todos os jogadores. Per-jogador exigiria persistir em `localStorage` também — fora de escopo da Fase Voz; volta como item futuro se aparecer pedido real.
+- A escolha de `echo` foi feita por **uma** pessoa (o dono) ouvindo as 5 amostras em um trecho do capítulo 1. Não é eval sistemático. Se outro jogador achar `echo` ruim, basta trocar a env — não é cara-de-pau cravar default sem dado massivo, porque o produto tem hoje exatamente um jogador alvo.
+
+---
+
 Esta seção é um lembrete: o planejamento cobriu as decisões estruturais, mas pontos novos surgirão quando o código encostar na realidade. Quando surgirem, decidir com base nos princípios (`ARQUITETURA.md` §2) e **registrar aqui** como um novo ADR. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento.
