@@ -51,19 +51,6 @@ warn_unused_ignores = true
 exclude = ["tests/"]
 plugins = ["pydantic.mypy"]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["../tests"]
-addopts = [
-    "--cov=app/rules",
-    "--cov-report=term-missing",
-    "--cov-fail-under=90",
-    "-m", "not eval",
-]
-markers = [
-    "eval: evaluates an LLM-backed agent against curated cases (opt-in, costs API calls)",
-]
-
-[tool.coverage.run]
-branch = true
-source = ["app/rules"]
+# Pytest config vive em /pytest.ini na raiz — necessário porque o
+# rootdir do pytest é a raiz (onde está .git) e config de pyproject
+# em subdiretório não é descoberta.
