@@ -197,6 +197,7 @@ Todo o sistema funcionando para **um jogador, um personagem**. O motor roda qual
 
 ### v2 — "A mesa completa"
 Aprofunda a fidelidade ao RPG de mesa, **mantendo a natureza single-player e a arquitetura da v1**. Tudo aqui é expansão de um jogo que já existe:
+- **Multi-provider LLM (Gemini + Groq + OpenAI) com split por agente** — escolha de provedor via `.env`, modelo distinto por agente (Referee usa REASONING; Narrator/NPC usam NARRATIVE). Aproveita a camada de providers da v1 (ADR-009) e resolve a fricção de quota do free tier do Gemini. Primeira entrega da v2 (ADR-044, ADR-045).
 - **Grupo de múltiplos personagens** — um jogador controlando uma party de 3-4 personagens (não confundir com multiplayer; ainda é single-player). Provavelmente o item mais fiel à essência do RPG de mesa.
 - **Criação de personagem** — escolher raça, classe, distribuir atributos, em vez dos pré-prontos.
 - **Sistema de descanso e recuperação** — acampar, recuperar HP, repreparar magias; o ciclo clássico de gestão de recursos.

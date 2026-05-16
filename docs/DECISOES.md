@@ -298,7 +298,7 @@
 
 **Decisão.** Roadmap em **três temas** (detalhado no PRD §11):
 - **v1 — "O sistema-base jogável":** todo o sistema para um jogador, um personagem, um capítulo. Um jogo completo e jogável.
-- **v2 — "A mesa completa":** aprofunda a fidelidade ao RPG de mesa, mantendo a natureza single-player e a arquitetura da v1 — grupo de múltiplos personagens, criação de personagem, descanso/recuperação, inventário com uso de itens, progressão entre capítulos, rolagem transparente, voz, segundo idioma, capítulo 2+.
+- **v2 — "A mesa completa":** aprofunda a fidelidade ao RPG de mesa, mantendo a natureza single-player e a arquitetura da v1 — multi-provider LLM com split por agente (ADR-044, ADR-045 — primeira entrega), grupo de múltiplos personagens, criação de personagem, descanso/recuperação, inventário com uso de itens, progressão entre capítulos, rolagem transparente, voz, segundo idioma, capítulo 2+.
 - **v3+ — "A mesa compartilhada e a plataforma":** o que muda a natureza do sistema — contas de usuário, multiplayer online com sala/ID, suporte a Vertex AI, capítulos contínuos.
 
 **Decisão de método associada:** a régua para decidir se algo é v1 é uma pergunta única — *"sem isto, dá para jogar o capítulo 1 do início ao fim?"* Se não, é v1; se sim, é v2+.
@@ -796,6 +796,85 @@ Concretamente:
 - **Custo escala com casos.** Mais casos = mais chamadas. Por isso o set é enxuto: 8 cases no Referee, 6 no Narrator, ~30 (gratuitos) na Robustez.
 - **Refinamento futuro:** se vier um classificador de robustez (ADR-026 deixa a porta aberta), o eval set já existe para compará-lo com a heurística antes de promover.
 - **Não usamos `adk eval`** — porta aberta para v2 se o ADK adicionar features que justifiquem.
+
+---
+
+## ADR-044 — Abertura da v2 do Unscripted
+
+**Contexto.** A v1 foi **fechada e publicada** em `origin/main` no commit `76d03fd` (16/16 critérios do PRD §10 validados, README/LICENSE/CONTRIBUTING em forma final, 43 ADRs registrados). Esse marco é imutável.
+
+Para que o projeto continue evoluindo sem corromper o significado do "fechamento da v1", a abertura da v2 precisa ser registrada com a mesma formalidade — princípios herdados, fronteira clara, lista de entregas planejadas, e primeira entrega declarada. Sem esse ADR, a v2 vira "trabalho que aconteceu depois da v1", não uma versão com identidade própria.
+
+**Decisão.** A **v2 está aberta a partir deste ADR**. O princípio inalterado da v2 (também herdado de ADR-021): **v2 é acoplamento, não reescrita**. Cada item da v2 deve aproveitar um gancho que já existe na v1 e expandi-lo — nunca refazer.
+
+**Itens planejados da v2** (atualizados no PRD §11 e na decisão atualizada do ADR-021):
+1. **Multi-provider LLM com split por agente** — primeira entrega (ADR-045). Aproveita a camada de providers (ADR-009) e resolve a fricção de quota do free tier do Gemini observada no smoke da Fase 7 da v1.
+2. Grupo de múltiplos personagens.
+3. Criação de personagem.
+4. Sistema de descanso e recuperação.
+5. Inventário com uso real de itens.
+6. Progressão entre capítulos.
+7. Rolagem de dados transparente.
+8. Voz (STT/TTS concreto — interface existe desde v1).
+9. Segundo idioma (inglês — i18n existe desde v1).
+10. Capítulo 2 e seguintes.
+
+**Método de execução.** A v2 é executada em **Fases**, espelhando o método da v1, em um documento próprio: `docs/PLANO_IMPLEMENTACAO_V2.md`. A v1 fica imutável em `docs/PLANO_IMPLEMENTACAO.md`; a v2 evolui no novo documento. Razão: cada versão tem ciclo próprio, e arquivo separado preserva o histórico de execução de uma versão concluída sem inflar o documento original.
+
+**Critérios de "v2 concluída"** (Definition of Done da v2 — alto nível; cada Fase define seus próprios critérios concretos):
+- Multi-provider LLM funciona com pelo menos 2 providers além de Gemini, validado por eval set.
+- Grupo de personagens, criação e descanso entregues com testes.
+- Voz STT/TTS substitui o provider stub da v1.
+- Inglês populado e troca de idioma funcional.
+- Capítulo 2 jogável de ponta a ponta, no formato de aventura.
+- Sem regressão nos critérios da v1 (PRD §10).
+
+**Consequências.**
+- A **identidade da v2** fica clara: "A mesa completa" (ADR-021) — aprofundamento sem mudança de natureza.
+- A **fronteira v1/v2** fica explícita: v1 é o sistema-base jogável; v2 é o que torna a experiência uma mesa de RPG de fato.
+- A **fronteira v2/v3+** continua intacta: v3+ muda a natureza do sistema (multi-usuário, contas, plataforma).
+- A **primeira entrega** está declarada e tem ADR técnico próprio (ADR-045) — não inflate este ADR.
+- O **roadmap** (PRD §11, ADR-021) foi atualizado em conjunto.
+
+---
+
+## ADR-045 — Multi-provider LLM via LiteLlm com split por agente (primeira entrega da v2)
+
+**Contexto.** Este é o **primeiro ADR técnico da v2** (ver ADR-044 para o marco de abertura). Durante o smoke da Fase 7 da v1, a quota free-tier do Gemini esgotou no segundo turno do jogo (20 RPD em `gemini-2.5-flash`, erro `429 RESOURCE_EXHAUSTED`). A experiência fluida exige uma alternativa.
+
+A camada de providers já existe (ADR-009) e expõe uma interface `LlmProvider` em `backend/app/providers/llm.py`. Só `GeminiAiStudioProvider` está implementado. Esta entrega adiciona **Groq** (foco, free tier muito mais generoso) e **OpenAI** (benchmark de qualidade + fallback pago confiável), com seleção por env var. **É demonstração concreta de competência multi-LLM**, que faz parte do propósito de portfólio do projeto (PRD §1).
+
+**Opções consideradas.**
+- **A — Sair do ADK** para algo provider-agnostic (LangChain, Pydantic AI). Reescrita grande, perde o investimento na ADK feito na v1.
+- **B — Usar o wrapper `LiteLlm` do próprio ADK.** Cobre dezenas de providers via prefixo (`groq/...`, `openai/...`). `output_schema=Ruling` é convertido automaticamente para `response_format` da OpenAI/Groq pelo método `_to_litellm_response_format()` do ADK ([`google/adk/models/lite_llm.py:1788`](google/adk/models/lite_llm.py)). Streaming funciona via `litellm.acompletion(stream=True)`.
+- **C — Manter Gemini com plano pago.** Resolve a quota mas não exibe a competência de multi-provider — perde a oportunidade de portfólio. Não atende à motivação central.
+
+**Decisão.** **Opção B — `LiteLlm` do ADK.** Adicionar `GroqProvider` e `OpenAiProvider` em `backend/app/providers/llm.py`, ambos retornando `LiteLlm(model="<prefix>/<model>")`. Manter `GeminiAiStudioProvider` com signatura nova. `get_llm_provider(settings)` despacha por env var `LLM_PROVIDER`.
+
+**Split por agente.** Cada provider declara dois modelos: `*_MODEL_REASONING` (Referee) e `*_MODEL_NARRATIVE` (Narrator/NPC). Se `NARRATIVE` é omitido, faz fallback para `REASONING` (single-model preservado). Razão: no Groq free tier, os modelos têm quotas radicalmente diferentes (`llama-3.3-70b-versatile` tem 1K RPD, `llama-3.1-8b-instant` tem 14.4K RPD). Split aproveita as duas quotas sem gargalo único.
+
+**Modelos default propostos** (a serem confirmados por eval set):
+- **Gemini:** `gemini-2.5-flash` para os dois propósitos (free tier limitado, mas serve para sanity).
+- **Groq:** REASONING = `llama-3.3-70b-versatile` (ou `qwen/qwen3-32b` se o eval favorecer); NARRATIVE = `llama-3.1-8b-instant`.
+- **OpenAI:** `gpt-4o-mini` para os dois propósitos (~$0.001/turno, structured output robusto).
+
+**Validação.** Eval set existente (`tests/evals/referee/` e `tests/evals/narrator/`) roda contra cada provider:
+- Referee: 4 candidatos Groq testados (`llama-3.3-70b`, `qwen3-32b`, `gpt-oss-120b`, `gpt-oss-20b`); melhor vira default.
+- Narrator: `llama-3.1-8b-instant` testado para streaming + regressão grossa.
+- OpenAI: `gpt-4o-mini` em ambos.
+
+Resultado vai para `docs/PROVIDERS.md` (novo) — tabela comparativa com pass rate, qualidade observada, latência, custo.
+
+**Consequências.**
+- **O gancho da camada de providers (ADR-009) é validado na prática.** Não é mais "preparado para troca" — está trocado.
+- **Quota não bloqueia mais o desenvolvimento.** Groq oferece ~1000 turnos/dia no split conservador; OpenAI oferece quota ilimitada para uso normal por ~$0.001/turno.
+- **Demonstração de portfólio:** multi-provider + eval comparativo + escolha consciente de modelos é exatamente o tipo de competência que o projeto se propõe a exibir (PRD §1).
+- **Sem reescrita do loop de turno.** `runner_turn.process_turn` continua exatamente igual; os providers são intercambiáveis no ponto de injeção.
+- **Plan B documentado (ADR-046 — só se necessário):** se um modelo específico do Groq não respeitar `response_format json_schema`, o eval set vai detectar. Nesse caso, implementar parsing manual do Ruling com retry. Hipótese de muito baixa probabilidade (confirmação no source do ADK).
+- **Limites conhecidos e aceitos:**
+  - `litellm` adiciona ~5 MB ao container. Negligível.
+  - Modelos Groq podem ter qualidade inferior ao Gemini Flash em casos complexos. Eval set mede isso.
+  - OpenAI requer conta paga (mesmo que muito barata). Documentado em `.env.example` e `PROVIDERS.md`.
 
 ---
 
