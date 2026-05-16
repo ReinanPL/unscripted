@@ -190,9 +190,20 @@ export function Play() {
 
     let consumed = false;
     let consumedTurnNumber: number | null = null;
-    let consumedNarration = "";
+    // Acumulamos a narração e as falas de NPC em variáveis locais durante
+    // o stream, em vez de depender do callback do setTurns (que React 18
+    // pode agendar fora do tempo do `for await`, fazendo `consumedNarration`
+    // chegar vazia no finally).
+    let narrationAcc = "";
+    const npcAcc = new Map<string, string>();
     try {
       for await (const ev of streamAction(campaignId, text)) {
+        if (ev.type === "chunk") {
+          narrationAcc += ev.text;
+        } else if (ev.type === "npc_chunk") {
+          const id = ev.npc_id ?? "npc";
+          npcAcc.set(id, (npcAcc.get(id) ?? "") + ev.text);
+        }
         consumed = consumeEvent(ev, {
           setTurns,
           setBanner,
@@ -200,9 +211,6 @@ export function Play() {
           setLastTurnNumber,
           fallbackInput: text,
           t,
-          onTurnComplete: (narration) => {
-            consumedNarration = narration;
-          },
         });
         if (consumed) {
           if (ev.type === "done" && ev.turn_number != null) {
@@ -227,9 +235,16 @@ export function Play() {
         // TTS turno-inteiro (Bloco 2 / ADR-049): com toggle ligado e
         // narração disponível, pede o áudio do turno e enfileira no
         // useAudioQueue. Sincronia frase-a-frase entra no Bloco 3.
-        if (ttsEnabled && consumedNarration) {
-          console.info("[tts] requesting", consumedNarration.length, "chars");
-          ttsToBlob(consumedNarration)
+        const consolidated = consolidateForTts(narrationAcc, npcAcc);
+        console.warn("[tts] finally", {
+          ttsEnabled,
+          narrationLen: narrationAcc.length,
+          npcCount: npcAcc.size,
+          consolidatedLen: consolidated.length,
+        });
+        if (ttsEnabled && consolidated) {
+          console.info("[tts] requesting", consolidated.length, "chars");
+          ttsToBlob(consolidated)
             .then((blob) => {
               if (blob) {
                 console.info("[tts] received blob", blob.size, "bytes");
@@ -379,18 +394,15 @@ interface ConsumeArgs {
   setLastTurnNumber: React.Dispatch<React.SetStateAction<number | null>>;
   fallbackInput: string;
   t: (key: string) => string;
-  /** Recebe a narração consolidada (narração + falas de NPC) quando o
-   *  turno fecha com `done`. Usado pelo Play para disparar TTS. */
-  onTurnComplete?: (narration: string) => void;
 }
 
-function consolidatedNarration(turn: NarrationTurn): string {
+function consolidateForTts(narration: string, npcs: Map<string, string>): string {
   const parts: string[] = [];
-  const main = turn.narrationChunks.join("").trim();
+  const main = narration.trim();
   if (main) parts.push(main);
-  for (const npc of turn.npcChunks) {
-    const text = npc.text.trim();
-    if (text) parts.push(text);
+  for (const text of npcs.values()) {
+    const trimmed = text.trim();
+    if (trimmed) parts.push(trimmed);
   }
   return parts.join("\n\n");
 }
@@ -403,7 +415,6 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
     setLastTurnNumber,
     fallbackInput,
     t,
-    onTurnComplete,
   } = args;
 
   switch (ev.type) {
@@ -438,17 +449,12 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
       return false;
     }
     case "done": {
-      setTurns((prev) => {
-        const next = updateLast(prev, (turn) => ({
+      setTurns((prev) =>
+        updateLast(prev, (turn) => ({
           ...turn,
           turnNumber: ev.turn_number ?? null,
-        }));
-        // Captura narração consolidada antes de retornar.
-        if (next.length > 0 && onTurnComplete) {
-          onTurnComplete(consolidatedNarration(next[next.length - 1]));
-        }
-        return next;
-      });
+        })),
+      );
       if (ev.turn_number !== null && ev.turn_number !== undefined) {
         setLastTurnNumber(ev.turn_number);
       }
