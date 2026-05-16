@@ -50,6 +50,23 @@ class Settings(BaseSettings):
     postgres_host: str = "postgres"
     postgres_port: int = 5432
 
+    # ===== Voz — STT/TTS separados (ADR-047) =====
+    # Cada propósito tem seu próprio provider. Mix entre provedores é explícito:
+    # `STT_PROVIDER=groq` + `TTS_PROVIDER=openai` é a combinação default
+    # recomendada (Groq free tier para STT; OpenAI para TTS com PT-BR nativo).
+    # Stub permanece disponível para CI/dev sem chaves.
+    stt_provider: Literal["stub", "groq"] = "stub"
+    groq_stt_model: str = "whisper-large-v3-turbo"
+
+    tts_provider: Literal["stub", "openai"] = "stub"
+    openai_tts_model: str = "gpt-4o-mini-tts"
+    # Valor default técnico até o ADR-049 cravar o final após teste de amostras.
+    # Vozes disponíveis: alloy, sage, echo, coral, shimmer (entre outras).
+    openai_tts_voice: str = "alloy"
+
+    # Campo herdado da v1 (ADR-014 stub). Removido junto com o refactor de
+    # `providers/voice.py` em `stt.py` + `tts.py` — fica aqui só enquanto o
+    # voice.py antigo existir, para manter os tipos válidos.
     voice_provider: Literal["stub"] = "stub"
 
     @property
