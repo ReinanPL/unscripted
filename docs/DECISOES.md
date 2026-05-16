@@ -808,16 +808,18 @@ Para que o projeto continue evoluindo sem corromper o significado do "fechamento
 **Decisão.** A **v2 está aberta a partir deste ADR**. O princípio inalterado da v2 (também herdado de ADR-021): **v2 é acoplamento, não reescrita**. Cada item da v2 deve aproveitar um gancho que já existe na v1 e expandi-lo — nunca refazer.
 
 **Itens planejados da v2** (atualizados no PRD §11 e na decisão atualizada do ADR-021):
-1. **Multi-provider LLM com split por agente** — primeira entrega (ADR-045). Aproveita a camada de providers (ADR-009) e resolve a fricção de quota do free tier do Gemini observada no smoke da Fase 7 da v1.
-2. Grupo de múltiplos personagens.
-3. Criação de personagem.
-4. Sistema de descanso e recuperação.
-5. Inventário com uso real de itens.
-6. Progressão entre capítulos.
-7. Rolagem de dados transparente.
-8. Voz (STT/TTS concreto — interface existe desde v1).
-9. Segundo idioma (inglês — i18n existe desde v1).
-10. Capítulo 2 e seguintes.
+1. **Multi-provider LLM com split por agente** — ✓ **CONCLUÍDA** (ADR-045). Aproveita a camada de providers (ADR-009). 3 providers validados: Gemini (regressão zero), Groq (free tier — `llama-3.3-70b` para REASONING e `llama-3.1-8b-instant` para NARRATIVE), OpenAI (`gpt-4o-mini` — eval Referee 7/8, Narrator 6/6).
+2. **Suporte a Vertex AI** — Fase 1.5, **pendente de decisão**. `GeminiVertexProvider` na mesma camada de providers, ativável via `LLM_PROVIDER=gemini_vertex`. Só faz sentido se o Unscripted rodar em produção GCP real. Como projeto de portfólio local/VPS, AI Studio basta. Sem prazo.
+3. **Cross-provider por agente** — Fase 2, **pendente de necessidade**. Permitir `LLM_PROVIDER_REASONING` ≠ `LLM_PROVIDER_NARRATIVE` (mistura entre providers). Hoje, OpenAI e Groq cobrem ambos os propósitos satisfatoriamente — esta fase só vira necessária se evals futuros mostrarem que nenhum provider único serve bem aos dois lados. Pendente dos resultados de uso real.
+4. Grupo de múltiplos personagens.
+5. Criação de personagem.
+6. Sistema de descanso e recuperação.
+7. Inventário com uso real de itens.
+8. Progressão entre capítulos.
+9. Rolagem de dados transparente.
+10. Voz (STT/TTS concreto — interface existe desde v1).
+11. Segundo idioma (inglês — i18n existe desde v1).
+12. Capítulo 2 e seguintes.
 
 **Método de execução.** A v2 é executada em **Fases**, espelhando o método da v1, em um documento próprio: `docs/PLANO_IMPLEMENTACAO_V2.md`. A v1 fica imutável em `docs/PLANO_IMPLEMENTACAO.md`; a v2 evolui no novo documento. Razão: cada versão tem ciclo próprio, e arquivo separado preserva o histórico de execução de uma versão concluída sem inflar o documento original.
 

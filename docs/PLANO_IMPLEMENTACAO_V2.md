@@ -23,20 +23,22 @@
 
 ## Visão geral da v2
 
-| Fase | Nome | Entrega central | Validação |
+| Fase | Nome | Status | Entrega central |
 |---|---|---|---|
-| **1** | **Multi-provider LLM** | Gemini + Groq + OpenAI com split por agente | Eval set passa em pelo menos 2 providers além de Gemini; smoke fim-a-fim nos 3 |
-| 2 | Grupo de personagens | Party de 3-4 personagens controlada pelo jogador | Combate típico em equipe rola completo |
-| 3 | Criação de personagem | Escolha de raça/classe/atributos | Personagem custom joga capítulo 1 |
-| 4 | Descanso e recuperação | Acampar, recuperar HP, repreparar magias | Sessão longa exercita o ciclo |
-| 5 | Itens reais | Usar poções, equipar armas que mudam chances | Itens entram nos rulings do Referee |
-| 6 | Progressão | XP + subida de nível entre capítulos | Personagem evolui na transição cap 1 → cap 2 |
-| 7 | Rolagem transparente | Jogador vê modificadores, bônus, motivo da DC | Painel pensamento + zona de narração |
-| 8 | Voz (STT/TTS concreto) | Provider de voz real substitui o stub | Fala-se com o mestre; ouve-se a narração |
-| 9 | Inglês | i18n PT + EN com troca de idioma | Joga em EN com mesmo capítulo |
-| 10 | Capítulo 2 | Adventure file novo, acoplado ao motor | Cap 2 jogável de ponta a ponta |
+| **1** | **Multi-provider LLM** | **✓ concluída** | Gemini + Groq + OpenAI com split por agente |
+| 1.5 | Suporte a Vertex AI | pendente de decisão | `GeminiVertexProvider` (só se for rodar em prod GCP real) |
+| 2 | Cross-provider por agente | pendente de necessidade | `LLM_PROVIDER_REASONING` ≠ `LLM_PROVIDER_NARRATIVE` |
+| 3 | Grupo de personagens | futura | Party de 3-4 personagens controlada pelo jogador |
+| 4 | Criação de personagem | futura | Escolha de raça/classe/atributos |
+| 5 | Descanso e recuperação | futura | Acampar, recuperar HP, repreparar magias |
+| 6 | Itens reais | futura | Usar poções, equipar armas que mudam chances |
+| 7 | Progressão | futura | XP + subida de nível entre capítulos |
+| 8 | Rolagem transparente | futura | Jogador vê modificadores, bônus, motivo da DC |
+| 9 | Voz (STT/TTS concreto) | futura | Provider de voz real substitui o stub |
+| 10 | Inglês | futura | i18n PT + EN com troca de idioma |
+| 11 | Capítulo 2 | futura | Adventure file novo, acoplado ao motor |
 
-A ordem é uma proposta — pode ser revista entre fases. A Fase 1 é fixa (já escolhida).
+A ordem é uma proposta — pode ser revista entre fases. A Fase 1 está concluída; 1.5 e 2 ficam pendentes de gatilhos concretos (ver seções abaixo).
 
 ---
 
@@ -73,25 +75,71 @@ A ordem é uma proposta — pode ser revista entre fases. A Fase 1 é fixa (já 
 **Fora de escopo desta fase.**
 - Tools/function calling com LiteLlm (não usamos no v1; entra quando v2 introduzir agentes com tools reais).
 - Anthropic Claude como provider (mesma arquitetura, mas fica para uma Fase posterior se houver demanda).
-- Vertex AI (ADR-008 cobre como v3+).
-- Outros itens da v2 (Fases 2-10).
+- Vertex AI → **promovido a Fase 1.5 (pendente)**, ver abaixo.
+- Cross-provider por agente → **promovido a Fase 2 (pendente)**, ver abaixo.
+- Outros itens da v2 (Fases 3-11 renumeradas).
 - Push para `origin/main` — usuário decide.
 
 ---
 
-## Fases 2-10 — esboço (refinadas no momento certo)
+## Fase 1.5 — Suporte a Vertex AI (pendente)
+
+**Objetivo (se ativada).** Adicionar `GeminiVertexProvider` na mesma camada de providers, ativável via `LLM_PROVIDER=gemini_vertex`. Diferenças vs `gemini_aistudio`:
+
+- Auth: Application Default Credentials (GCP) ou service account JSON, em vez de API key.
+- Env vars: `GOOGLE_GENAI_USE_VERTEXAI=1` + `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION`.
+- Endpoint: `*-aiplatform.googleapis.com` regional.
+- Cobrança: pay-as-you-go (sem free tier, mas mais barato em escala).
+- Features extras: context caching, batch, fine-tuning.
+
+**Condição para ativar.** **Só faz sentido se o Unscripted for rodar em produção GCP real.** Como projeto de portfólio local ou em VPS comum, AI Studio (`gemini_aistudio`) já basta — e está rodando. Esta fase fica **pendente de decisão concreta** do dono do projeto.
+
+**Tarefas (esboço).**
+- `GeminiVertexProvider` em `backend/app/providers/llm.py`.
+- Settings: `vertex_project_id`, `vertex_location`, `vertex_credentials_path` (opcional — ADC é o caminho recomendado).
+- Atualizar `.env.example` com seção Vertex.
+- Smoke contra o mesmo eval set do Referee/Narrator.
+- ADR técnico próprio (ADR-046, se ativada).
+
+**Tamanho estimado.** ~30 minutos de implementação se as credenciais GCP estiverem prontas. Não bloqueia nenhuma outra fase.
+
+---
+
+## Fase 2 — Cross-provider por agente (pendente)
+
+**Objetivo (se ativada).** Permitir provider **diferente por propósito**: `LLM_PROVIDER_REASONING=openai` + `LLM_PROVIDER_NARRATIVE=groq`. Hoje, a Fase 1 só permite split de **modelos dentro do mesmo provider**.
+
+**Condição para ativar.** **Só vira necessária se os evals/uso mostrarem que nenhum provider único serve bem em REASONING E NARRATIVE ao mesmo tempo.** Hoje:
+
+- OpenAI: 7/8 no Referee, 6/6 no Narrator — único provider serve bem aos dois.
+- Groq: 6/8 no Referee, 6/6 no Narrator — também serve aos dois.
+- Gemini: não exercitado em eval (regressão validada via testes determinísticos).
+
+A motivação prática (Referee com structured output robusto + Narrator com streaming barato em outro provider) **ainda não foi sentida**. Esta fase fica **pendente dos resultados de uso real**.
+
+**Tarefas (esboço — Opção A do plano original).**
+- Settings: `llm_provider` → `llm_provider_reasoning` + `llm_provider_narrative` (cada um aceitando os valores de provider hoje).
+- `get_llm_provider(settings)` vira `get_provider_for(purpose, settings)` — devolve a instância correta para cada propósito.
+- `build_*_agent` continua chamando `provider.build_model(purpose)` — mas o `provider` agora é purpose-specific.
+- Eventual `ADR-047` documentando o split cross-provider.
+
+**Tamanho estimado.** ~1-2 horas. Não bloqueia outras fases.
+
+---
+
+## Fases 3-11 — esboço (refinadas no momento certo)
 
 As fases abaixo serão detalhadas como a Fase 1 quando chegar o momento de cada uma. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento (mesmo princípio da v1).
 
-- **Fase 2 — Grupo de personagens.** Modelo de estado passa a ter `party: list[Character]` em vez de um único `character`. Loop de turno escolhe qual personagem age. Interface mostra a party.
-- **Fase 3 — Criação de personagem.** Substitui a tela `CreateCampaign` por um fluxo de criação. Schema novo em `content/character_options/`.
-- **Fase 4 — Descanso e recuperação.** Nova ação determinística no motor. Capítulos passam a definir locais de descanso.
-- **Fase 5 — Itens reais.** Schema de `Item` ganha `effects`. Motor consome efeitos em testes de perícia.
-- **Fase 6 — Progressão.** XP + level up. Persistência entre capítulos via `flags.objectives_completed`.
-- **Fase 7 — Rolagem transparente.** Painel pensamento ganha visualização rica de modificadores; UI mostra a matemática.
-- **Fase 8 — Voz STT/TTS.** `VoiceProvider` ganha implementação real (provavelmente OpenAI Whisper + ElevenLabs, ou alternativa free).
-- **Fase 9 — Inglês.** `frontend/src/i18n/en.ts` populado; troca de idioma na UI; prompts dos agentes traduzidos.
-- **Fase 10 — Capítulo 2.** Novo arquivo em `content/chapters/chapter-02/`. Ingestão automática (já idempotente). Gancho de transição cap 1 → cap 2.
+- **Fase 3 — Grupo de personagens.** Modelo de estado passa a ter `party: list[Character]` em vez de um único `character`. Loop de turno escolhe qual personagem age. Interface mostra a party.
+- **Fase 4 — Criação de personagem.** Substitui a tela `CreateCampaign` por um fluxo de criação. Schema novo em `content/character_options/`.
+- **Fase 5 — Descanso e recuperação.** Nova ação determinística no motor. Capítulos passam a definir locais de descanso.
+- **Fase 6 — Itens reais.** Schema de `Item` ganha `effects`. Motor consome efeitos em testes de perícia.
+- **Fase 7 — Progressão.** XP + level up. Persistência entre capítulos via `flags.objectives_completed`.
+- **Fase 8 — Rolagem transparente.** Painel pensamento ganha visualização rica de modificadores; UI mostra a matemática.
+- **Fase 9 — Voz STT/TTS.** `VoiceProvider` ganha implementação real (provavelmente OpenAI Whisper + ElevenLabs, ou alternativa free).
+- **Fase 10 — Inglês.** `frontend/src/i18n/en.ts` populado; troca de idioma na UI; prompts dos agentes traduzidos.
+- **Fase 11 — Capítulo 2.** Novo arquivo em `content/chapters/chapter-02/`. Ingestão automática (já idempotente). Gancho de transição cap 1 → cap 2.
 
 ---
 
