@@ -181,13 +181,15 @@ A indexação (chunk + embed) de cada corpus acontece **uma vez** (no setup / ao
 
 Interfaces que isolam as dependências externas. Implementações selecionadas por variável de ambiente.
 
-| Provider | Implementação v1 | Ganchos futuros |
-|---|---|---|
-| **LLM** | Gemini 2.5 Flash via AI Studio API | provider Vertex AI (v3+) |
-| **Embedding** | modelo local no container | provider de embedding via API (Google etc.) |
-| **Voz (STT/TTS)** | interface definida; implementação stub na v1 | implementação concreta na v2 |
+| Provider | Implementação v1 | Implementação v2 (Fase 1) | Ganchos futuros |
+|---|---|---|---|
+| **LLM** | Gemini 2.5 Flash via AI Studio API | + **Groq** (via LiteLlm) + **OpenAI** (via LiteLlm), com **split por agente** (REASONING / NARRATIVE) — ADR-045 | provider Vertex AI (v3+) |
+| **Embedding** | modelo local no container | (sem mudança) | provider de embedding via API (Google etc.) |
+| **Voz (STT/TTS)** | interface definida; implementação stub na v1 | (sem mudança — fase futura da v2) | implementação concreta na v2 |
 
 Nenhum código de domínio (loop de turno, agentes, RAG) referencia um provedor concreto.
+
+**Sobre o split por agente (v2 Fase 1).** Cada provider declara dois modelos: `*_MODEL_REASONING` (Referee — output estruturado) e `*_MODEL_NARRATIVE` (Narrator/NPC — streaming de prosa). O método `build_model(purpose)` despacha por propósito. Se `NARRATIVE` é omitido, faz fallback para `REASONING` (comportamento single-model preservado para Gemini/OpenAI). No Groq, o split aproveita as quotas distintas — `llama-3.3-70b-versatile` (1K RPD) para REASONING e `llama-3.1-8b-instant` (14.4K RPD) para NARRATIVE — sem gargalo único. Detalhes em `docs/PROVIDERS.md`.
 
 ## 8. Modelo de estado do jogo
 

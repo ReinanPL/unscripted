@@ -1,10 +1,12 @@
 # Unscripted
 
-**v1.0** · single-player tabletop RPG with an AI Game Master.
+**v2.0 — Fase 1 (multi-provider LLM)** · single-player tabletop RPG with an AI Game Master.
 
 The AI **narrates**, **arbitrates**, and **reacts** to anything the player tries — in natural language. Rules are enforced deterministically by a Python engine; the LLM handles interpretation, prose, and NPC voice. The interface is themed for tabletop play, not generic chat.
 
-The game itself is played in **Portuguese (pt-BR)**; the i18n layer is in place for a second language in v2.
+**Multi-provider since v2.** The LLM provider is selectable via `.env` — Gemini (default), Groq (free tier, high quota), or OpenAI (paid, high quality). Each agent (Referee, Narrator, NPCActor) can use a distinct model — the "split" mode aggregates quotas in providers like Groq. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for the comparison.
+
+The game itself is played in **Portuguese (pt-BR)**; the i18n layer is in place for a second language in a future v2 phase.
 
 ![Tela inicial — sente-se à mesa](docs/assets/screenshot-landing.png)
 
@@ -57,13 +59,25 @@ unscripted/
     └── evals/        # Agent eval sets (opt-in, against real LLM)
 ```
 
+## Choose your LLM provider (v2)
+
+Set `LLM_PROVIDER` in `.env` and provide the corresponding API key:
+
+| `LLM_PROVIDER` | Key needed | Cost | Quota |
+|---|---|---|---|
+| `groq` | `GROQ_API_KEY` ([console.groq.com](https://console.groq.com)) | free tier | ~1000 turnos/dia (split, llama-3.3-70b + llama-3.1-8b) |
+| `openai` | `OPENAI_API_KEY` ([platform.openai.com](https://platform.openai.com)) | ~$0.001/turno (gpt-4o-mini) | ilimitado |
+| `gemini_aistudio` | `GEMINI_API_KEY` ([aistudio.google.com](https://aistudio.google.com)) | free tier | 20 turnos/dia (apertado) |
+
+Each provider supports **split by agent** — `*_MODEL_REASONING` (Referee) and `*_MODEL_NARRATIVE` (Narrator/NPC). Defaults are sensible; full details in [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
+
 ## Run locally
 
 The whole stack is portable via Docker Compose — same image runs locally and on a VPS, only env vars change.
 
 ```bash
 cp .env.example .env
-# Fill in GEMINI_API_KEY (https://aistudio.google.com/) and review other variables
+# Pick LLM_PROVIDER and fill the corresponding API key (see section above)
 docker compose up
 ```
 
