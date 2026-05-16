@@ -28,17 +28,17 @@
 | **1** | **Multi-provider LLM** | **✓ concluída** | Gemini + Groq + OpenAI com split por agente |
 | 1.5 | Suporte a Vertex AI | pendente de decisão | `GeminiVertexProvider` (só se for rodar em prod GCP real) |
 | 2 | Cross-provider por agente | pendente de necessidade | `LLM_PROVIDER_REASONING` ≠ `LLM_PROVIDER_NARRATIVE` |
-| 3 | Grupo de personagens | futura | Party de 3-4 personagens controlada pelo jogador |
-| 4 | Criação de personagem | futura | Escolha de raça/classe/atributos |
-| 5 | Descanso e recuperação | futura | Acampar, recuperar HP, repreparar magias |
-| 6 | Itens reais | futura | Usar poções, equipar armas que mudam chances |
-| 7 | Progressão | futura | XP + subida de nível entre capítulos |
-| 8 | Rolagem transparente | futura | Jogador vê modificadores, bônus, motivo da DC |
-| 9 | Voz (STT/TTS concreto) | futura | Provider de voz real substitui o stub |
+| **3** | **Voz (STT/TTS concreto)** | **em andamento** | Groq Whisper (STT) + OpenAI `gpt-4o-mini-tts` (TTS) substituem o stub; toggle no frontend; sincronia texto+voz no nível de frase (ADR-046, ADR-047, ADR-048, ADR-049) |
+| 4 | Grupo de personagens | futura | Party de 3-4 personagens controlada pelo jogador |
+| 5 | Criação de personagem | futura | Escolha de raça/classe/atributos |
+| 6 | Descanso e recuperação | futura | Acampar, recuperar HP, repreparar magias |
+| 7 | Itens reais | futura | Usar poções, equipar armas que mudam chances |
+| 8 | Progressão | futura | XP + subida de nível entre capítulos |
+| 9 | Rolagem transparente | futura | Jogador vê modificadores, bônus, motivo da DC |
 | 10 | Inglês | futura | i18n PT + EN com troca de idioma |
 | 11 | Capítulo 2 | futura | Adventure file novo, acoplado ao motor |
 
-A ordem é uma proposta — pode ser revista entre fases. A Fase 1 está concluída; 1.5 e 2 ficam pendentes de gatilhos concretos (ver seções abaixo).
+A ordem das fases 4-11 é proposta e pode ser revista entre fases. A Fase 1 está concluída; 1.5 e 2 ficam pendentes de gatilhos concretos. A Fase 3 (Voz) foi promovida da posição 9 da ordem original — ver ADR-046 para a justificativa.
 
 ---
 
@@ -127,17 +127,46 @@ A motivação prática (Referee com structured output robusto + Narrator com str
 
 ---
 
-## Fases 3-11 — esboço (refinadas no momento certo)
+## Fase 3 — Voz STT/TTS concreto (em andamento)
 
-As fases abaixo serão detalhadas como a Fase 1 quando chegar o momento de cada uma. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento (mesmo princípio da v1).
+**Objetivo.** Substituir o stub de voz da v1 (ADR-014) por implementações reais: STT com Groq Whisper (`whisper-large-v3-turbo`) e TTS com OpenAI (`gpt-4o-mini-tts`). Adicionar toggle de narração falada no frontend (persistido em localStorage, default off). Implementar sincronia texto+voz no nível de **frase**, orquestrada pelo backend (a voz acompanha o texto chunked do Narrator com offset de ~1-2s na primeira frase, depois empata).
 
-- **Fase 3 — Grupo de personagens.** Modelo de estado passa a ter `party: list[Character]` em vez de um único `character`. Loop de turno escolhe qual personagem age. Interface mostra a party.
-- **Fase 4 — Criação de personagem.** Substitui a tela `CreateCampaign` por um fluxo de criação. Schema novo em `content/character_options/`.
-- **Fase 5 — Descanso e recuperação.** Nova ação determinística no motor. Capítulos passam a definir locais de descanso.
-- **Fase 6 — Itens reais.** Schema de `Item` ganha `effects`. Motor consome efeitos em testes de perícia.
-- **Fase 7 — Progressão.** XP + level up. Persistência entre capítulos via `flags.objectives_completed`.
-- **Fase 8 — Rolagem transparente.** Painel pensamento ganha visualização rica de modificadores; UI mostra a matemática.
-- **Fase 9 — Voz STT/TTS.** `VoiceProvider` ganha implementação real (provavelmente OpenAI Whisper + ElevenLabs, ou alternativa free).
+**Decisões cravadas (ADRs).**
+- **ADR-046** — Promoção desta fase. Ver `DECISOES.md`.
+- **ADR-047** — Providers concretos de voz e separação `SttProvider` × `TtsProvider`. TTS local descartado por princípio de portabilidade.
+- **ADR-048** — Sincronia texto+voz no nível de frase, backend orquestra. Karaokê palavra-a-palavra explicitamente descartado por custo de complexidade e por conflito com a estética editorial do projeto.
+- **ADR-049** — Toggle TTS no frontend (`localStorage`, default off, header da zona play). Mecanismo de voz configurável via env (`OPENAI_TTS_VOICE`); valor default escolhido após teste de amostras das 5 vozes do gpt-4o-mini-tts.
+
+**Estrutura em blocos.**
+
+- **Bloco 1 — Refactor de providers + STT real (Groq Whisper).** Settings, separação `stt.py`/`tts.py`, `GroqWhisperProvider`, endpoint `/voice/stt` real, testes.
+- **Bloco 2 — TTS real (OpenAI) + toggle no frontend.** `OpenAiTtsProvider`, script de amostras das 5 vozes, hook `useTtsToggle`, `TtsToggle`, hook `useAudioQueue`, integração turno-inteiro-em-um-áudio.
+- **Bloco 3 — Sincronia de frase (backend orquestra).** `SentenceBuffer`, `audio_sentence` no SSE, `tts_enabled` na request, frontend enfileira por índice, falha por frase não corrompe o turno.
+- **Bloco 4 — Documentação e fechamento.** ARQUITETURA §7/§12.6, PROVIDERS.md seção "Voz", README, refinamento das skills.
+
+**Critério de fase concluída** (Definition of Done):
+- [ ] STT real funcionando: jogador grava voz no botão, texto reconhecido aparece no input.
+- [ ] Toggle TTS visível e persistente; default off.
+- [ ] Com toggle ON, narração sai falada em PT-BR sincronizada por frase com o texto.
+- [ ] Com toggle OFF, zero chamadas a `/voice/tts` (custo zero).
+- [ ] Falha de áudio (STT ou TTS) não corrompe estado e não consome o turno indevidamente.
+- [ ] `docker compose up` sobe tudo idêntico em local e VPS, sem dependência GPU.
+- [ ] Nenhuma chave de API circula pelo frontend.
+- [ ] ADRs 046, 047, 048, 049 registrados.
+- [ ] PRD/ARQUITETURA/PROVIDERS/PLANO_V2 atualizados.
+
+---
+
+## Fases 4-11 — esboço (refinadas no momento certo)
+
+As fases abaixo serão detalhadas como a Fase 1 e a Fase 3 quando chegar o momento de cada uma. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento (mesmo princípio da v1).
+
+- **Fase 4 — Grupo de personagens.** Modelo de estado passa a ter `party: list[Character]` em vez de um único `character`. Loop de turno escolhe qual personagem age. Interface mostra a party.
+- **Fase 5 — Criação de personagem.** Substitui a tela `CreateCampaign` por um fluxo de criação. Schema novo em `content/character_options/`.
+- **Fase 6 — Descanso e recuperação.** Nova ação determinística no motor. Capítulos passam a definir locais de descanso.
+- **Fase 7 — Itens reais.** Schema de `Item` ganha `effects`. Motor consome efeitos em testes de perícia.
+- **Fase 8 — Progressão.** XP + level up. Persistência entre capítulos via `flags.objectives_completed`.
+- **Fase 9 — Rolagem transparente.** Painel pensamento ganha visualização rica de modificadores; UI mostra a matemática.
 - **Fase 10 — Inglês.** `frontend/src/i18n/en.ts` populado; troca de idioma na UI; prompts dos agentes traduzidos.
 - **Fase 11 — Capítulo 2.** Novo arquivo em `content/chapters/chapter-02/`. Ingestão automática (já idempotente). Gancho de transição cap 1 → cap 2.
 

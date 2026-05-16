@@ -872,11 +872,79 @@ Resultado vai para `docs/PROVIDERS.md` (novo) — tabela comparativa com pass ra
 - **Quota não bloqueia mais o desenvolvimento.** Groq oferece ~1000 turnos/dia no split conservador; OpenAI oferece quota ilimitada para uso normal por ~$0.001/turno.
 - **Demonstração de portfólio:** multi-provider + eval comparativo + escolha consciente de modelos é exatamente o tipo de competência que o projeto se propõe a exibir (PRD §1).
 - **Sem reescrita do loop de turno.** `runner_turn.process_turn` continua exatamente igual; os providers são intercambiáveis no ponto de injeção.
-- **Plan B documentado (ADR-046 — só se necessário):** se um modelo específico do Groq não respeitar `response_format json_schema`, o eval set vai detectar. Nesse caso, implementar parsing manual do Ruling com retry. Hipótese de muito baixa probabilidade (confirmação no source do ADK).
+- **Plan B documentado (não acionado):** se um modelo específico do Groq não respeitasse `response_format json_schema`, o eval set detectaria. Nesse caso, implementar parsing manual do Ruling com retry. Hipótese de muito baixa probabilidade — não foi acionada (modelo vencedor `llama-3.3-70b-versatile` passou). Não tem ADR técnico próprio; se vier a ser necessário no futuro, ganha um número novo na fila.
 - **Limites conhecidos e aceitos:**
   - `litellm` adiciona ~5 MB ao container. Negligível.
   - Modelos Groq podem ter qualidade inferior ao Gemini Flash em casos complexos. Eval set mede isso.
   - OpenAI requer conta paga (mesmo que muito barata). Documentado em `.env.example` e `PROVIDERS.md`.
+
+---
+
+## ADR-046 — Promoção da Fase Voz para a próxima entrega da v2
+
+**Contexto.** O `PLANO_IMPLEMENTACAO_V2.md` original listava Voz como Fase 9, atrás de Grupo de personagens, Criação de personagem, Descanso, Itens reais, Progressão e Rolagem transparente. A ordem das fases 3-11 era declarada como "proposta, pode ser revista entre fases" (PLANO_V2.md §1).
+
+Durante o uso real do jogo após a Fase 1 da v2, o dono do projeto identificou que **a voz tem mais valor de portfólio e de experiência que as outras fases pendentes**:
+
+- Voz fecha a promessa "RPG de mesa conversacional" — a metáfora literal da palavra "conversacional".
+- Voz é demonstração concreta de **dois SDKs distintos** (Groq Whisper + OpenAI TTS) atrás da camada de providers — reforça o gancho de ADR-009.
+- Voz é trabalho **vertical e contido** (~3-4 dias), enquanto Grupo de personagens é refactor profundo do modelo de estado (`character: Character` → `party: list[Character]`) que afeta loop de turno, persistência e UI ao mesmo tempo — uma fatia muito maior.
+- A interface de voz já existe desde a v1 como stub (ADR-014). Promover é "completar a fundação", não "abrir frente nova".
+
+**Opções consideradas.**
+- **A — Manter ordem original** (Voz = Fase 9). Coerente com o que estava escrito, mas ignora a recalibração que o uso real permite.
+- **B — Promover Voz para a próxima fase.** Reordena 3-11. Compatível com a regra explícita do PLANO_V2 §1 ("a ordem é uma proposta — pode ser revista").
+- **C — Promover Inglês** (Fase 10). Aproveita a infra de i18n da v1, mas é trabalho de **conteúdo** mais que arquitetura — menos valor de portfólio e menos vertical.
+
+**Decisão.** **Opção B.** Voz vira a próxima entrega da v2. As demais fases (Grupo, Criação, Descanso, Itens, Progressão, Rolagem transparente, Inglês, Capítulo 2) permanecem como esboço futuro no `PLANO_IMPLEMENTACAO_V2.md` §"Fases 3-11", a serem detalhadas no momento de cada uma.
+
+**Consequências.**
+- `PLANO_IMPLEMENTACAO_V2.md` é atualizado para refletir Voz como próxima fase concreta; as demais ficam como "futura" sem ordem cravada.
+- A primeira entrega técnica da fase ganha ADR-047 (providers concretos de voz).
+- A regra "ordem é proposta" (PLANO_V2 §1) é exercitada — registro deste ADR é a forma de manter isso visível em vez de mudança silenciosa.
+
+---
+
+## ADR-047 — Voz: providers concretos (Groq Whisper STT + OpenAI gpt-4o-mini-tts TTS) e separação de interfaces
+
+**Contexto.** A camada de voz nasceu na v1 (ADR-014) como **stub**: `VoiceProvider` Protocol único com `transcribe` + `synthesize`, e `StubVoiceProvider` retornando vazio. Era proporcional ao escopo da v1: a UI completa, o pipeline pronto, zero dependência externa de áudio.
+
+Promovida a Voz para a próxima fase da v2 (ADR-046), implementações concretas precisam entrar. Restrição de arquitetura: o sistema sobe via `docker compose up` portável e idêntico em local e VPS (ADR-010) — sem GPU, sem assets pesados, sem binários extras.
+
+**Opções consideradas.**
+
+Para **STT (jogador → texto)**:
+- Groq Whisper (`whisper-large-v3-turbo`): free tier generoso (~14.4K RPD em `*-turbo`), API simples, latência ~1s para ~30s de áudio, PT-BR direto, chave Groq já no `.env`.
+- OpenAI Whisper: ~$0.006/min, mesma qualidade — mais caro, sem vantagem prática.
+- Whisper local (`faster-whisper`, `whisper.cpp`): zero custo de API mas adiciona binário/modelo pesado ao container; arranha portabilidade.
+- AssemblyAI / Deepgram: bons mas adicionam SDK e custo sem vantagem clara.
+
+Para **TTS (texto → jogador)**:
+- OpenAI `gpt-4o-mini-tts`: PT-BR nativo, streaming de áudio, ~$0.015/1K chars, chave OpenAI já no `.env`.
+- ElevenLabs: qualidade superior em PT-BR, mas custo ~10x e mais um SDK.
+- TTS local (Coqui, Bark): quebra portabilidade (modelos grandes, possivelmente GPU). **Descartado por princípio.**
+- OpenAI `tts-1` (gen anterior): mais barato mas qualidade inferior.
+
+Para **a interface no código**:
+- Manter `VoiceProvider` único: força implementação a fazer STT **e** TTS, ou um dos dois ser stub. Não escala — Groq não tem TTS bom, OpenAI não tem STT competitivo. Acopla coisas que não pertencem juntas.
+- **Separar em `SttProvider` × `TtsProvider`:** cada um com sua env var (`STT_PROVIDER`, `TTS_PROVIDER`). Implementações podem ser mixadas (`STT_PROVIDER=groq + TTS_PROVIDER=openai`).
+
+**Decisão.**
+
+- **STT:** `GroqWhisperProvider` em `backend/app/providers/stt.py`, via `litellm.atranscription(model="groq/whisper-large-v3-turbo", ...)`. Coerência com a Fase 1 da v2 (litellm já é o wrapper escolhido — ADR-045).
+- **TTS:** `OpenAiTtsProvider` em `backend/app/providers/tts.py`, via `litellm.aspeech(model="openai/gpt-4o-mini-tts", ...)`. Coerência idem.
+- **TTS local descartado** por princípio de portabilidade (ADR-010): qualquer provider de voz no container precisa ser uma API HTTP, não um binário/modelo grande.
+- **Interface separada:** `SttProvider` (`transcribe`) e `TtsProvider` (`synthesize`, `synthesize_stream` opcional). `VoiceProvider` unificado da v1 é removido — `Stub*` migra para cada lado. Sem backwards-compat (não paga o aluguel — Princípio 2).
+- **Stubs preservados:** `StubSttProvider` e `StubTtsProvider`. Útil em CI sem chaves e em dev quando se quer eliminar custo.
+
+**Consequências.**
+- `backend/app/providers/voice.py` é apagado; nasce `stt.py` + `tts.py`.
+- `backend/app/config.py`: campo `voice_provider` removido; nascem `stt_provider`, `tts_provider`, `groq_stt_model`, `openai_tts_model`, `openai_tts_voice`.
+- `backend/app/runner.py`: `_voice_provider` vira `_stt_provider` + `_tts_provider`. Accessor `get_voice_provider_cached` é substituído por `get_stt_provider_cached` + `get_tts_provider_cached`.
+- `backend/app/api/voice.py`: endpoints `/voice/stt` e `/voice/tts` despacham para os providers corretos.
+- `.env.example`: seção "Voz" com as variáveis novas e custo aproximado documentado.
+- A interface do botão de gravar (frontend) **não muda** — herda comportamento.
+- Mix de provedores fica explícito: Groq para STT (free tier), OpenAI para TTS (qualidade + streaming + PT-BR nativo). Não está acoplado: amanhã, trocar TTS para ElevenLabs é escrever um `ElevenLabsTtsProvider` e mudar uma env var.
 
 ---
 
