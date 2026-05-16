@@ -89,7 +89,7 @@ O ADK é um framework code-first para orquestração de agentes, otimizado para 
 ### 4.2. Os agentes
 A divisão em múltiplos agentes se justifica por motivos concretos — contratos de saída diferentes, escopo de ferramentas/RAG diferente por agente, e testabilidade — e **não** por "porque o ADK permite". A divisão:
 
-- **`GameMasterAgent`** — o orquestrador. Recebe a ação do jogador e o estado da sessão e conduz o turno. Começa como um `LlmAgent` coordenador (mais simples de depurar); evolui para um `BaseAgent` customizado quando a lógica condicional exigir (pular a etapa de dados quando não há rolagem, pular NPCs quando a cena está vazia). Recomendação: começar com cadeia sequencial, depurar, e só então adicionar complexidade condicional.
+- **GameMaster (orquestrador)** — função Python (`runner_turn.process_turn`), **não** um agente ADK. Recebe a ação do jogador e o estado da sessão, conduz o turno chamando cada agente individualmente e intercalando etapas determinísticas. A decisão de não usar `LlmAgent`/`BaseAgent`/`SequentialAgent` para a orquestração está em `DECISOES.md` (ADR-035): "pular rolagem", "aplicar consequência", "chamar NPC condicionalmente" são decisões de fluxo, não de julgamento — pertencem a código, não a um agente.
 
 - **`RefereeAgent`** (Árbitro) — recebe a ação, consulta as **regras** via RAG, e emite um **ruling estruturado** (objeto tipado, não prosa) — algo como `{precisa_rolagem: bool, perícia: str, dificuldade: int, consequências: {sucesso, falha}}`. Escreve o resultado no estado da sessão.
 
@@ -253,12 +253,14 @@ Teste mental: *"o sistema precisa ler isto de forma exata e previsível, agora?"
 
 ## 11. Camada de API (FastAPI)
 
-O backend expõe a API do jogo. O ADK tem integração FastAPI nativa, mas o projeto envolve endpoints próprios. Endpoints principais (v1):
+O backend expõe a API do jogo. O ADK tem integração FastAPI nativa, mas o projeto envolve endpoints próprios. Endpoints v1:
 
 - `POST /campaigns` — inicia uma nova partida (cria a sessão, retorna o ID anônimo).
 - `POST /campaigns/{id}/action` — processa um turno do jogador; transmite a narração via SSE (streaming).
 - `GET /campaigns/{id}/state` — retorna o estado conhecido pelo jogador (ficha, inventário, localização, objetivos) — nunca o estado oculto.
 - `GET /campaigns/{id}/log` — histórico da partida.
+- `GET /campaigns/{id}/graph` — grafo de locações filtrado por `locations_revealed` + silhuetas das cenas ainda não exploradas (ADR-038, ADR-042).
+- `GET /campaigns/{id}/turn/{n}/trace` — trace completo do turno N (ruling, retrieval, rolagem, consequência, narração, reação de NPC), consumido pelo painel "pensamento do mestre" (ADR-036).
 
 Requisitos transversais da API: rate limiting, CORS configurado, validação de toda entrada, a chave do LLM nunca trafega para o frontend.
 
