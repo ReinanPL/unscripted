@@ -78,3 +78,45 @@
     box-shadow: 0 0 0 1px var(--c-blood);
   }
 }
+
+/*
+ * Toggle de narração falada — botão no header da zona play.
+ * Mesmo selo discreto do voice-button, sem o pulse. Quando ON, o
+ * ícone fica em bronze suave; quando OFF, na cor faint do texto.
+ */
+
+.tts-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast);
+}
+
+.tts-toggle--off {
+  color: var(--c-text-faint);
+  opacity: 0.65;
+}
+
+.tts-toggle--on {
+  color: var(--c-bronze-bright);
+  border-color: var(--c-bronze-faint);
+  background: rgba(184, 138, 60, 0.1);
+}
+
+.tts-toggle:hover,
+.tts-toggle:focus-visible {
+  outline: none;
+  border-color: var(--c-bronze-faint);
+  background: rgba(184, 138, 60, 0.08);
+  opacity: 1;
+}

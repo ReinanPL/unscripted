@@ -16,6 +16,7 @@ import {
   isNetworkError,
   isNotFound,
   streamAction,
+  ttsToBlob,
 } from "../api";
 import type {
   ActionEvent,
@@ -33,9 +34,12 @@ import { Narration, type NarrationTurn } from "../components/Narration";
 import { RobustnessBanner } from "../components/RobustnessBanner";
 import { SceneImage } from "../components/SceneImage";
 import { StatusCompact } from "../components/StatusCompact";
+import { TtsToggle } from "../components/TtsToggle";
 import { useT } from "../i18n";
+import { useAudioQueue } from "../state/useAudioQueue";
 import { useSession } from "../state/session";
 import { usePrevious } from "../state/usePrevious";
+import { useTtsToggle } from "../state/useTtsToggle";
 
 type Banner =
   | { kind: "robustness"; category: string; reason: string }
@@ -56,6 +60,15 @@ export function Play() {
   // navegação em traces históricos na v1.
   const [lastTurnNumber, setLastTurnNumber] = useState<number | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useTtsToggle();
+  const audioQueue = useAudioQueue();
+
+  function handleTtsToggle(next: boolean) {
+    setTtsEnabled(next);
+    // Desligar mid-turno: interrompe áudio que estiver tocando e
+    // esvazia a fila (ADR-049).
+    if (!next) audioQueue.clear();
+  }
 
   // Atalho global: tecla "C" alterna o modal da ficha. Ignora quando
   // o foco está num input/textarea (jogador digitando ação) ou quando
@@ -162,6 +175,7 @@ export function Play() {
 
     let consumed = false;
     let consumedTurnNumber: number | null = null;
+    let consumedNarration = "";
     try {
       for await (const ev of streamAction(campaignId, text)) {
         consumed = consumeEvent(ev, {
@@ -171,6 +185,9 @@ export function Play() {
           setLastTurnNumber,
           fallbackInput: text,
           t,
+          onTurnComplete: (narration) => {
+            consumedNarration = narration;
+          },
         });
         if (consumed) {
           if (ev.type === "done" && ev.turn_number != null) {
@@ -192,6 +209,17 @@ export function Play() {
     } finally {
       setStreaming(false);
       if (consumed && campaignId) {
+        // TTS turno-inteiro (Bloco 2 / ADR-049): com toggle ligado e
+        // narração disponível, pede o áudio do turno e enfileira no
+        // useAudioQueue. Sincronia frase-a-frase entra no Bloco 3.
+        if (ttsEnabled && consumedNarration) {
+          ttsToBlob(consumedNarration)
+            .then((blob) => {
+              if (blob) audioQueue.enqueue(blob);
+            })
+            .catch(() => undefined);
+        }
+
         // Recarrega state e graph para refletir mutacoes deterministicas
         // (location nova, locations_revealed expandido).
         getCampaignState(campaignId)
@@ -248,6 +276,9 @@ export function Play() {
     <>
     <Layout
       onExit={reset}
+      headerExtras={
+        <TtsToggle enabled={ttsEnabled} onChange={handleTtsToggle} />
+      }
       narration={
         <>
           {banner !== null ? (
@@ -325,11 +356,32 @@ interface ConsumeArgs {
   setLastTurnNumber: React.Dispatch<React.SetStateAction<number | null>>;
   fallbackInput: string;
   t: (key: string) => string;
+  /** Recebe a narração consolidada (narração + falas de NPC) quando o
+   *  turno fecha com `done`. Usado pelo Play para disparar TTS. */
+  onTurnComplete?: (narration: string) => void;
+}
+
+function consolidatedNarration(turn: NarrationTurn): string {
+  const parts: string[] = [];
+  const main = turn.narrationChunks.join("").trim();
+  if (main) parts.push(main);
+  for (const npc of turn.npcChunks) {
+    const text = npc.text.trim();
+    if (text) parts.push(text);
+  }
+  return parts.join("\n\n");
 }
 
 function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
-  const { setTurns, setBanner, setInput, setLastTurnNumber, fallbackInput, t } =
-    args;
+  const {
+    setTurns,
+    setBanner,
+    setInput,
+    setLastTurnNumber,
+    fallbackInput,
+    t,
+    onTurnComplete,
+  } = args;
 
   switch (ev.type) {
     case "chunk": {
@@ -363,12 +415,17 @@ function consumeEvent(ev: ActionEvent, args: ConsumeArgs): boolean {
       return false;
     }
     case "done": {
-      setTurns((prev) =>
-        updateLast(prev, (turn) => ({
+      setTurns((prev) => {
+        const next = updateLast(prev, (turn) => ({
           ...turn,
           turnNumber: ev.turn_number ?? null,
-        })),
-      );
+        }));
+        // Captura narração consolidada antes de retornar.
+        if (next.length > 0 && onTurnComplete) {
+          onTurnComplete(consolidatedNarration(next[next.length - 1]));
+        }
+        return next;
+      });
       if (ev.turn_number !== null && ev.turn_number !== undefined) {
         setLastTurnNumber(ev.turn_number);
       }

@@ -120,7 +120,9 @@ export const pt = {
   voice: {
     record: "Gravar voz",
     stop: "Parar",
-    notAvailable: "A voz ainda não está implementada — em breve.",
+    notAvailable: "Não consegui reconhecer o que você falou. Tente de novo.",
+    ttsOn: "Narração falada: ligada",
+    ttsOff: "Narração falada: desligada",
   },
   common: {
     close: "Fechar",
