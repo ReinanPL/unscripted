@@ -1036,4 +1036,46 @@ A OpenAI oferece 11+ vozes em `gpt-4o-mini-tts` (alloy, ash, ballad, coral, echo
 
 ---
 
+## ADR-050 — Fix de viés de contexto no Referee: separar "a ação a julgar" do "fundo da cena"
+
+**Contexto.** Durante o smoke da Fase Voz (campanha `2481344a`, turno 3) o RefereeAgent classificou "Em seguida eu me desculpo e saio da taverna" como Intimidação DC 20, rolou, falhou, e o jogador tomou dano — depois de dois turnos prévios de combate carregados no `state_summary`. Mesma intenção reformulada no turno 4 ("Antes de sair, peço desculpas") foi tratada corretamente como ação social sem rolagem. Alta sensibilidade do ruling ao tom dos turnos anteriores.
+
+**Causa investigada (duas hipóteses, ambas confirmadas).**
+
+- **Hipótese A — prompt.** O `REFEREE_INSTRUCTION` separava `{state_summary}` e `{action}` em blocos distintos do template, mas não dizia ao LLM como pesar um vs. o outro. Pior: a linha "O contexto da cena define isso, não a ação em si" **incentivava** o LLM a deixar o contexto dominar.
+- **Hipótese B — estrutura.** `_state_summary` colocava `"Últimos turnos: [1] X → narração; [2] Y → narração"` numa string corrida com `→`, misturando player_action histórica e narração. Estruturalmente as ações passadas tinham o mesmo papel léxico que a ação atual — só rotuladas pelo `[turno]`. O LLM não tinha como distinguir.
+
+**Opções consideradas.**
+
+- **A1.** Reforço só de prompt: deixar a linha viesada e adicionar instrução nova. Barato mas frágil — o conflito interno do prompt pode confundir.
+- **A2 (descartado).** Heurística de palavras-chave no prompt ("ação pacífica → não rolar"). Band-aid: enumeração nunca cobre todos os casos; vira regra rígida que falha em borda.
+- **B1.** Refactor estrutural do `_state_summary` rotulando histórico explicitamente, separando player_action de narração, sem `→`. Ataca a raiz da Hipótese B.
+- **C (descartado).** Remover o histórico do prompt. Inaceitável — quebra continuidade narrativa que o Referee precisa para arbitrar bem (ex.: NPC já estava ferido, item ainda no inventário, etc.).
+- **D (descartado por enquanto).** Campo `intencao_classificada` no `Ruling` (pacífica/social/combativa/exploratória) forçando o LLM a classificar antes de decidir rolagem. Útil para observabilidade, mas adicionaria peso ao schema antes de necessário. Fica como possibilidade futura se A1+B1 se mostrarem insuficientes.
+
+**Decisão.** Combinar **A1 + B1** (prompt + estrutura). As duas hipóteses se reforçam — não dá pra dizer qual contribuiu mais para o viés, então conserta as duas.
+
+- **Prompt** (`backend/app/agents/prompts/referee.py`):
+  - Bloco novo no topo dos princípios: "O que você está julgando" — explicita que `{action}` é o objeto único do ruling e que o resto é fundo. Cita explicitamente o caso "se o tom do histórico recente diverge da ação atual, julgue a ação atual em seus próprios termos".
+  - Linha viesada reescrita: "A trivialidade vem da ação declarada agora mais o estado presente da cena (HP, NPCs presentes, localização atual), **não do tom dos turnos anteriores**".
+  - Cabeçalhos do template rotulados: `## Contexto de fundo (NÃO é o que você está julgando)` envolve `rules_context` e `state_summary`; `## A ação a arbitrar (é isto, e apenas isto)` envolve `action`.
+- **Estrutura** (`backend/app/runner_turn.py:_state_summary`):
+  - Duas seções rotuladas em Markdown: `## Estado presente` (cena atual) e `## Histórico recente (passado — NÃO é a ação a julgar)`.
+  - Por turno do histórico, dois campos separados em bullets distintos: `- Ação anterior do jogador:` e `- Narração anterior:`. Sem `→`.
+
+**Consequências.**
+
+- Eval set `tests/evals/referee/cases.yaml` ganha dois casos cobrindo o viés: `desculpa_pos_combate` (ação social após combate) e `examinar_pos_combate` (percepção após combate). Vira regressão verificável.
+- Baseline antes do fix (Groq llama-3.3-70b + OpenAI gpt-4o-mini): 7/12 cada. Pós-fix: 9/12 (OpenAI), 7/12 (Groq, com 1 erro de schema flutuante). **Crítico:** os dois casos de viés passam o critério principal — `precisa_rolagem=False` para a desculpa. O Bug 1 na forma original ("classifica como Intimidação") deixa de reproduzir.
+- Forma residual do viés ("medroso" — LLM trata como trivial uma ação que devia rolar) persiste em `examinar_pos_combate` no Groq. É limite de calibragem do modelo, não falha do prompt: o texto "Olho ao redor com calma" é genuinamente fronteiriço entre Percepção e trivial. Aceitável.
+- Não altera o schema `Ruling` (campo `intencao_residual` adicionado neste mesmo bloco é independente — atende ao ADR-051).
+- Não há perda de continuidade narrativa: o histórico continua presente, só rotulado.
+
+**Limites conhecidos.**
+
+- A separação estrutural depende do LLM **respeitar a rotulação Markdown**. Modelos pequenos podem ignorá-la. Mitigação: o eval set é a única forma de detectar isso por provider; quando um provider novo for adicionado, rodar o eval antes de cravar default.
+- Sampling do LLM ainda introduz variância. O caso original do bug (`Intimidação DC 20`) era sampling instável; este fix reduz a probabilidade, não a zera.
+
+---
+
 Esta seção é um lembrete: o planejamento cobriu as decisões estruturais, mas pontos novos surgirão quando o código encostar na realidade. Quando surgirem, decidir com base nos princípios (`ARQUITETURA.md` §2) e **registrar aqui** como um novo ADR. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento.
