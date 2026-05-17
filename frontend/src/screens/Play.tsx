@@ -169,10 +169,16 @@ export function Play() {
     if (!text) return;
     // Diagnóstico: console.warn sobrevive a qualquer filtro default.
     console.warn("[tts] submit", { ttsEnabled });
+    // Novo turno começa com fila limpa — áudios pendentes do turno
+    // anterior são resíduo. Backend pode enfileirar mais áudios do
+    // que cabe em ~25s; sem este clear, frases do turno anterior
+    // continuariam tocando no meio do turno novo.
+    audioQueue.clear();
     if (ttsEnabled) {
-      // Destrava autoplay aproveitando este click como user gesture.
-      // Cobre o caso "toggle restaurado do localStorage sem click direto"
-      // — sem isso, o blob real cai num play() bloqueado silenciosamente.
+      // Destrava autoplay aproveitando este click como user gesture
+      // (depois do clear, que garante paused=true). Cobre o caso
+      // "toggle restaurado do localStorage sem click direto" — sem
+      // isso, o blob real cai num play() bloqueado silenciosamente.
       audioQueue.unlock();
     }
     setBanner(null);
