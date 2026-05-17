@@ -1,10 +1,12 @@
 # Unscripted
 
-**v2.0 — Fase 1 (multi-provider LLM)** · single-player tabletop RPG with an AI Game Master.
+**v2.0 — Fase 3 (voz STT/TTS)** · single-player tabletop RPG with an AI Game Master.
 
 The AI **narrates**, **arbitrates**, and **reacts** to anything the player tries — in natural language. Rules are enforced deterministically by a Python engine; the LLM handles interpretation, prose, and NPC voice. The interface is themed for tabletop play, not generic chat.
 
 **Multi-provider since v2.** The LLM provider is selectable via `.env` — Gemini (default), Groq (free tier, high quota), or OpenAI (paid, high quality). Each agent (Referee, Narrator, NPCActor) can use a distinct model — the "split" mode aggregates quotas in providers like Groq. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for the comparison.
+
+**Voice in v2.** The player can speak the action (Groq Whisper STT, free tier, pt-BR native) and toggle spoken narration (OpenAI `gpt-4o-mini-tts`, ~$0.001/turn). The narration synchronizes per-sentence — audio of each sentence is dispatched while the next is still being generated, so voice and text land together. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) §"Voz".
 
 The game itself is played in **Portuguese (pt-BR)**; the i18n layer is in place for a second language in a future v2 phase.
 
@@ -71,6 +73,21 @@ Set `LLM_PROVIDER` in `.env` and provide the corresponding API key:
 
 Each provider supports **split by agent** — `*_MODEL_REASONING` (Referee) and `*_MODEL_NARRATIVE` (Narrator/NPC). Defaults are sensible; full details in [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
+## Voice — STT and TTS (v2)
+
+Two independent providers, each selectable by its own env var. Both reuse keys you already set for the LLM.
+
+| Channel | `*_PROVIDER` | Default | Key | Cost |
+|---|---|---|---|---|
+| **STT** (player speaks) | `STT_PROVIDER=groq` | `whisper-large-v3-turbo` | `GROQ_API_KEY` | **free** (Groq free tier) |
+| **TTS** (master speaks) | `TTS_PROVIDER=openai` | `gpt-4o-mini-tts`, voice `echo` | `OPENAI_API_KEY` | ~$0.001/turn |
+
+**STT** is always-available — the mic button next to the input transcribes whatever you say into the text box, you review, then submit.
+
+**TTS** is opt-in via a toggle in the play header (persisted in `localStorage`, default off — **zero cost** when off). When on, audio of each sentence streams in parallel to the text: the first spoken sentence lands ~1-2s after it appears on screen; the rest catches up. Karaoke per-word was explicitly rejected (heavy dep + visual of "AI product" clashes with the editorial identity).
+
+Override voice via `OPENAI_TTS_VOICE` in `.env` (tested: `alloy`, `sage`, `echo`, `coral`, `shimmer`). `StubSttProvider`/`StubTtsProvider` are preserved for CI and dev without keys.
+
 ## Run locally
 
 The whole stack is portable via Docker Compose — same image runs locally and on a VPS, only env vars change.
@@ -114,7 +131,7 @@ The design rationale is in the repo — these documents are part of the project,
 
 - **[docs/PRD.md](docs/PRD.md)** — what the system does and why
 - **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)** — how it's built
-- **[docs/DECISOES.md](docs/DECISOES.md)** — 43 architectural decisions with context, alternatives, trade-offs
+- **[docs/DECISOES.md](docs/DECISOES.md)** — 49 architectural decisions with context, alternatives, trade-offs
 - **[docs/VALIDACAO_V1.md](docs/VALIDACAO_V1.md)** — point-by-point checklist of the v1 acceptance criteria
 
 ## Licensing
