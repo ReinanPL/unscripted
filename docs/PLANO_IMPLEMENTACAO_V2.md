@@ -29,6 +29,8 @@
 | 1.5 | Suporte a Vertex AI | pendente de decisão | `GeminiVertexProvider` (só se for rodar em prod GCP real) |
 | 2 | Cross-provider por agente | pendente de necessidade | `LLM_PROVIDER_REASONING` ≠ `LLM_PROVIDER_NARRATIVE` |
 | **3** | **Voz (STT/TTS concreto)** | **✓ concluída** | Groq Whisper (STT) + OpenAI `gpt-4o-mini-tts` (TTS) substituem o stub; toggle no frontend; sincronia texto+voz no nível de frase (ADR-046, ADR-047, ADR-048, ADR-049) |
+| **3.5** | **Polish do Referee** | **✓ concluída** | Fix de viés de contexto (ADR-050) + paliativo de intenção residual (ADR-051); eval set ampliado |
+| 3.6 | Ação composta nativa | futura | Suportar duas ações resolvidas de verdade num mesmo turno (ver §"Fase 3.6" abaixo) |
 | 4 | Grupo de personagens | futura | Party de 3-4 personagens controlada pelo jogador |
 | 5 | Criação de personagem | futura | Escolha de raça/classe/atributos |
 | 6 | Descanso e recuperação | futura | Acampar, recuperar HP, repreparar magias |
@@ -157,7 +159,49 @@ A motivação prática (Referee com structured output robusto + Narrator com str
 - [x] ARQUITETURA/PROVIDERS/PLANO_V2 atualizados.
 
 **Aprendizados que ficaram registrados como dívida ou follow-up.**
-- Bug do Referee descoberto durante smokes da fase voz (campanha `2481344a`, turno 3): RefereeAgent classifica ações pacíficas/de retirada como Intimidação quando o contexto recente é de combate. Não é regressão da voz; bug antigo de viés do `state_summary`. Endereçado em fase posterior — ver memória `project_referee_bug_pendente.md` e ADR-021/PRD §11 (item pós-Fase 3 a definir).
+- Bug do Referee descoberto durante smokes da fase voz (campanha `2481344a`, turno 3): RefereeAgent classifica ações pacíficas/de retirada como Intimidação quando o contexto recente é de combate. **Endereçado na Fase 3.5** (ADR-050) — bug de viés resolvido. Também descoberto no mesmo turno: segunda intenção do jogador (sair da taverna) evaporou em silêncio. **Endereçado parcialmente na Fase 3.5** via paliativo `intencao_residual` (ADR-051); suporte real a ação composta fica para Fase 3.6.
+
+---
+
+## Fase 3.5 — Polish do Referee (✓ concluída)
+
+**Objetivo.** Endereçar dois bugs descobertos no smoke da Fase Voz, ambos no `RefereeAgent`:
+
+- **Bug 1.** Viés de contexto: o tom dos turnos anteriores enviesava o ruling da ação atual. Ação pacífica após combate podia ser classificada como ação combativa.
+- **Bug 2 (metade A).** Quando o jogador declara duas intenções numa frase, a segunda evaporava em silêncio — não processada, não narrada, não recusada com aviso. Metade B (suporte real a ação composta) fica para a Fase 3.6.
+
+**Tarefas executadas.**
+
+| # | Bloco | Status | Entrega |
+|---|---|---|---|
+| 3.5.1 | Eval set ampliado | ✓ | `tests/evals/referee/cases.yaml` ganhou 4 casos cobrindo viés (pós-combate) e intenção residual (multi-intenção). `_check_case` ganhou validação `intencao_residual_keywords` aceitando dois caminhos válidos. Baseline rodada contra OpenAI e Groq. |
+| 3.5.2 | Fix do viés de contexto | ✓ | Prompt do Referee separa explicitamente "a ação a julgar" (`{action}`) de "contexto de fundo" (`{rules_context}` + `{state_summary}`). `_state_summary` no `runner_turn.py` rotula histórico, separa player_action de narração, tira o `→`. ADR-050. |
+| 3.5.3 | Paliativo de intenção residual | ✓ | `Ruling.intencao_residual: str \| None` no schema; prompt do Referee instrui quando preencher; estado da sessão ADK propaga ao Narrator; prompt do Narrator narra reconhecimento da intenção pendente sem aplicá-la. `TurnTrace.intencao_residual` espelha para observabilidade. ADR-051. |
+
+**Resultado medido (eval set, OpenAI gpt-4o-mini).** 7/12 → 10/12. Casos de viés agora passam o critério principal. Casos de intenção residual passam quando o LLM preenche o campo OU resolve as duas intenções numa só consequência.
+
+**Limites conhecidos.** ADR-051 explicita: quando o LLM não preenche `intencao_residual`, o silêncio volta naquele caso — fix real é a Fase 3.6. Observado em Groq llama-3.3-70b em alguns casos.
+
+---
+
+## Fase 3.6 — Ação composta nativa (futura)
+
+**Objetivo.** Quando o jogador declara duas (ou mais) ações distintas no mesmo turno, processar **todas** com seus próprios rulings, rolagens e consequências. Substituir o paliativo `intencao_residual` (ADR-051) por suporte real.
+
+**Por que não foi feita junto da Fase 3.5.** É feature nova — o sistema nunca suportou ação composta. Não é regressão; é limite de desenho. Misturar feature nova com fix de bug aumenta risco e mistura escopos. ADR-051 cobre o silêncio (metade A do bug); esta fase cobre a metade B.
+
+**Opções candidatas (decisão adiada).**
+
+- **Opção 2C — Refactor do schema.** `Ruling.actions: list[Action]`, cada `Action` com `pericia`/`dificuldade`/`consequencia*` próprias. `apply_consequence` aplica em sequência. Narrator narra o conjunto. Muda contrato; toca em Referee, orquestrador, Narrator, NPC, trace, frontend. Trade-off: solução estrutural; custo alto; quebra de retrocompat se feita sem cuidado.
+- **Opção 2D — Loop no orquestrador.** Mantém `Ruling` single-action. `process_turn` chama o Referee em loop até o LLM declarar "nenhuma intenção pendente", aplicando estado entre as iterações. Trade-off: menos invasivo no schema; pode degenerar em N rolagens; precisa do detector de fim-de-loop.
+
+A escolha vem **quando a feature for priorizada** — não antecipar agora. O ADR-051 mantém o sistema operável até lá.
+
+**Critério para entrar.** Quando algum dos seguintes for verdadeiro:
+- O paliativo `intencao_residual` falhar com frequência observável em jogo real (vários casos consecutivos de silêncio dependendo do provider).
+- O dono do projeto priorizar a feature por outro motivo (ex.: capítulo novo onde ações compostas são parte da fantasia esperada).
+
+Até lá, fica como pendência conhecida — não bug.
 
 ---
 
