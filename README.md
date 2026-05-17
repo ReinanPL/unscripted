@@ -23,11 +23,15 @@ Three zones: narration in the center, the scene image and the location graph on 
 **The deterministic / LLM boundary is the central thesis.** A turn flows through a Python orchestrator (`runner_turn.process_turn`) that intercalates LLM steps and deterministic steps:
 
 1. **Robustness gate** — the player's input is validated by deterministic heuristics *before* any LLM is invoked. Result declaration, prompt injection attempts, and disallowed content are rejected with a red banner; the turn is not consumed.
-2. **Referee agent** — a Gemini agent with a Pydantic `Ruling` schema decides if a roll is needed, which skill, the difficulty, and the consequences for success and failure.
+2. **Referee agent** — an LLM agent (Gemini, Groq, or OpenAI — see §"Choose your LLM provider") with a Pydantic `Ruling` schema decides if a roll is needed, which skill, the difficulty, and the consequences for success and failure.
 3. **Dice** — deterministic Python rolls the die and compares against the difficulty.
 4. **Consequence** — deterministic Python validates the LLM's proposal and applies it to the game state. The LLM never mutates state directly.
 5. **Narrator agent** — turns the deterministic outcome into prose, streamed via SSE.
 6. **NPC actor agent** — when a present NPC should react, voiced by a single agent with the persona injected from the chapter file.
+
+The cycle is visible in real time: the player's action stays pinned at the top, "o mestre está pensando" appears while the Referee runs, and the Narrator's prose streams in below — chunk by chunk, with the typewriter cadence of a book being read aloud.
+
+![Turno em andamento — narração chegando](docs/assets/screenshot-turn.png)
 
 **RAG for rules and lore.** Two corpora in pgvector: the SRD 5.1 fragments feed the Referee; the chapter file feeds the Narrator. Embeddings are computed locally (no API call per turn). Retrieval is a deterministic prefetch in the runner — not a tool the LLM chooses to call.
 
@@ -53,7 +57,7 @@ unscripted/
 │   ├── srd/          # SRD 5.1 rules corpus (CC-BY 4.0)
 │   ├── chapters/     # Original adventure chapters in structured YAML
 │   └── characters/   # Pre-made player sheets (Guerreiro, Paladino)
-├── docs/             # PRD, architecture, 43 ADRs, validation checklist
+├── docs/             # PRD, architecture, 51 ADRs, validation checklist
 └── tests/
     ├── rules/        # Deterministic engine tests (100% coverage)
     ├── agents/       # Robustness contract tests
@@ -119,11 +123,11 @@ The Vite dev server proxies `/campaigns`, `/health`, and `/voice` to the backend
 ### Running tests
 
 ```bash
-pytest                 # 139 tests, ~6s, 100% coverage on the rules engine
-pytest -m eval --no-cov   # eval sets against real Gemini (opt-in, costs API)
+pytest                 # 220 tests, ~9s, 100% coverage on the rules engine
+pytest -m eval --no-cov   # eval sets against real LLM (opt-in, costs API)
 ```
 
-The default suite is free of API calls; eval sets are opt-in and skip automatically if `GEMINI_API_KEY` is missing.
+The default suite is free of API calls; eval sets are opt-in and skip automatically if the active provider's key is missing.
 
 ## Architecture, decisions, validation
 
@@ -131,7 +135,7 @@ The design rationale is in the repo — these documents are part of the project,
 
 - **[docs/PRD.md](docs/PRD.md)** — what the system does and why
 - **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)** — how it's built
-- **[docs/DECISOES.md](docs/DECISOES.md)** — 49 architectural decisions with context, alternatives, trade-offs
+- **[docs/DECISOES.md](docs/DECISOES.md)** — 51 architectural decisions with context, alternatives, trade-offs
 - **[docs/VALIDACAO_V1.md](docs/VALIDACAO_V1.md)** — point-by-point checklist of the v1 acceptance criteria
 
 ## Licensing
