@@ -1078,4 +1078,47 @@ A OpenAI oferece 11+ vozes em `gpt-4o-mini-tts` (alloy, ash, ballad, coral, echo
 
 ---
 
+## ADR-051 — Intenção residual no Ruling: paliativo consciente para múltiplas intenções no mesmo turno
+
+**Contexto.** Smoke da Fase Voz revelou que o sistema **engole em silêncio** uma das intenções quando o jogador declara duas numa só frase. Caso real: "Em seguida eu me desculpo e saio da taverna" (campanha `2481344a`, turno 3) — o Referee classificou o turno inteiro como Intimidação (Bug 1, fix em ADR-050), aplicou dano, e a saída da taverna **não foi processada, não foi narrada, e não foi recusada com aviso**. O jogador continuou na taverna sem nenhum sinal disso. Esse silêncio fere o princípio do produto: o jogador escreveu, o sistema **tem que reconhecer**.
+
+**Bug 2 tem duas metades.**
+
+- **Metade A — a intenção evapora em silêncio.** Fix obrigatório na v1. É o que este ADR resolve.
+- **Metade B — suporte real a ação composta** (processar "me desculpo" E "saio" como duas ações resolvidas, com rolagens próprias quando cabe, narração coerente para ambas). É **feature nova** — o `Ruling` atual é single-action por desenho. Fica no roadmap v2; ver `PLANO_IMPLEMENTACAO_V2.md`. Não entra aqui.
+
+**Investigação.** O `Ruling` (Pydantic, ADK `output_schema`) é single-action: `precisa_rolagem` único, uma `pericia`, uma `dificuldade`, **uma** consequência (ou par sucesso/falha). O orquestrador `process_turn` é single-pass: um Ruling → uma consequência aplicada → uma narração → um NPC opcional. Não há onde a 2ª intenção caiba — o Referee é forçado a escolher uma e descartar a outra.
+
+**Opções consideradas.**
+
+- **2A (descartada).** Aceitar a limitação e instruir o jogador "uma ação por turno". Zera custo mas quebra a fantasia de RPG conversacional — caso comum em mesa real.
+- **2B (escolhida).** Paliativo: campo `intencao_residual: str | None` no `Ruling`, o Referee detecta múltiplas intenções e registra a secundária; o Narrator recebe instrução explícita para narrar reconhecimento da intenção pendente sem aplicá-la. Não suporta ação composta de verdade — apenas **garante que o jogador nunca é ignorado**.
+- **2C (futura).** Refactor profundo: `Ruling.actions: list[Action]`. Suporta nativamente, custa caro (Ruling, apply_consequence, Narrator, NPC, schema do trace, frontend). Fica para v2.
+- **2D (futura).** Loop no orquestrador: emitir N rulings sequenciais. Mantém Ruling single-action; muda o orquestrador. Também fica para v2.
+
+**Decisão.** **2B — paliativo no schema atual.** É proporcional ao bug ("parar de ser silencioso"), não cria peça nova (B.2 com agente intent_splitter dedicado seria começar a construir a infra de ação composta — fica para v2).
+
+- **Schema.** `Ruling.intencao_residual: str | None = None`. Texto curto, imperativo, descrevendo a intenção pendente na voz do jogador (ex.: "sair da taverna", "abrir a porta dos fundos").
+- **Prompt do Referee.** Bloco novo explica quando preencher (duas intenções distintas), quando deixar `null` (intenção única; segundo verbo = consequência do primeiro; resolução já couber numa só consequência), e o formato esperado.
+- **Propagação.** `process_turn` copia `ruling.intencao_residual` para a chave `intencao_residual` do estado da sessão ADK (junto com `ruling`/`roll_outcome`/`consequence_applied`). O Narrator lê via placeholder `{intencao_residual?}` no prompt.
+- **Prompt do Narrator.** Quando preenchido, narrar o reconhecimento da intenção pendente **em frase curta, ao final do turno**, sem aplicá-la. Exemplos do tom esperado constam no prompt para guiar o modelo.
+- **Trace.** `TurnTrace.intencao_residual` espelha o campo — observabilidade no painel "pensamento do mestre" (frontend já tipa o campo).
+
+**Limites conhecidos (decisão explícita).**
+
+- **Quando o LLM não preenche o campo**, o turno procede sem reconhecimento — o silêncio que motivou este ADR pode voltar nesse caso específico. **Não é bug**: é o limite do paliativo. Observado em Groq llama-3.3-70b no smoke do `desculpa_pos_combate` — modelo ignorou a instrução residual. O fix real é a feature de v2.
+- **Quando o LLM resolve as duas intenções numa só consequência**, `intencao_residual` corretamente fica `null`. Observado em OpenAI gpt-4o-mini: "me desculpo e saio" foi processado com `consequencia.new_location=taverna_exterior` + `events_occurred=[descupa, saída]`. O paliativo **não é acionado** porque não há intenção pendente — o LLM mais capaz não precisou dele.
+- **Implicação para o eval set.** O caso `desculpa_pos_combate` aceita dois caminhos válidos (residual preenchido **OU** consequência cobrindo a 2ª intenção); falha só quando nem um nem outro cobre — aí houve silêncio.
+- **Detector cabe no próprio Referee, sem agente novo.** Tentar um `intent_splitter` dedicado seria começar a montar a infra de ação composta (2C/2D) — fora de escopo deste ADR.
+
+**Consequências.**
+
+- Schema do `Ruling` ganha um campo opcional; nenhuma quebra de contrato (default `null`, validador inalterado).
+- Prompt do Referee fica mais longo; risco de modelo pequeno ignorar a instrução. Mitigação: ADR-050 já restringe o que entra como "ação a julgar", reduzindo confusão.
+- Prompt do Narrator ganha placeholder; quando vazio, o behavior é idêntico ao anterior.
+- Painel "pensamento do mestre" (frontend) já tipa `intencao_residual` em `TurnTrace`. Exibir explicitamente no painel fica como polish opcional — o dado já está acessível.
+- ADR define **claramente** que isto é paliativo. O fix verdadeiro mora no roadmap v2 (ação composta nativa).
+
+---
+
 Esta seção é um lembrete: o planejamento cobriu as decisões estruturais, mas pontos novos surgirão quando o código encostar na realidade. Quando surgirem, decidir com base nos princípios (`ARQUITETURA.md` §2) e **registrar aqui** como um novo ADR. Não antecipar 100% agora — isso seria over-engineering aplicado ao planejamento.
