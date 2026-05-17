@@ -272,6 +272,14 @@ async def _stream_with_audio(
     next_to_assign = sentence_index_start
     tts_errors: list[str] = []
     text_acc = ""
+    # Defesa em profundidade contra o cenário do "boom" (evento final
+    # cumulativo gigante que cai no `else` de `_stream_agent_text` e
+    # acaba sendo reprocessado pelo SentenceBuffer, gerando as MESMAS
+    # frases nas MESMAS posições do buffer cumulativo). Chave = (posição
+    # ordinal, frase normalizada). Mesma frase em posição diferente
+    # ("Silêncio. Silêncio.") tem chaves distintas e sai normalmente.
+    already_synthed: set[tuple[int, str]] = set()
+    sentence_position = 0
 
     async def _release_in_order() -> None:
         nonlocal next_to_emit
@@ -303,24 +311,37 @@ async def _stream_with_audio(
             ready[idx] = None
         await _release_in_order()
 
+    def _dispatch_synth(sentence: str) -> None:
+        """Aplica dedupe `(posição, frase)` antes de criar a task de TTS.
+
+        Frase duplicada na mesma posição (cenário do "boom") é skipada
+        — não incrementa `next_to_assign` nem cria task. Frase repetida
+        em outra posição (`"Silêncio. Silêncio."` legítimo) sai normal.
+        """
+        nonlocal sentence_position, next_to_assign
+        key = (sentence_position, sentence.strip().lower())
+        sentence_position += 1
+        if key in already_synthed:
+            return
+        already_synthed.add(key)
+        idx = next_to_assign
+        next_to_assign += 1
+        pending.append(asyncio.create_task(_synth(idx, sentence)))
+
     async def _stream() -> None:
-        nonlocal text_acc, next_to_assign
+        nonlocal text_acc
         try:
             async for chunk in _stream_agent_text(runner, campaign_id, trigger):
                 text_acc += chunk
                 await queue.put(TurnEvent(type=text_event_type, text=chunk, npc_id=npc_id))
                 if tts_provider is not None:
                     for sentence in sentence_buffer.push(chunk):
-                        idx = next_to_assign
-                        next_to_assign += 1
-                        pending.append(asyncio.create_task(_synth(idx, sentence)))
+                        _dispatch_synth(sentence)
             # Frase residual ao fim do stream do agente.
             if tts_provider is not None:
                 residual = sentence_buffer.flush()
                 if residual:
-                    idx = next_to_assign
-                    next_to_assign += 1
-                    pending.append(asyncio.create_task(_synth(idx, residual)))
+                    _dispatch_synth(residual)
             # Aguarda todas as tasks de TTS terminarem antes de sinalizar fim.
             if pending:
                 await asyncio.gather(*pending, return_exceptions=True)
