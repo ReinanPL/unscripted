@@ -28,7 +28,7 @@
 | **1** | **Multi-provider LLM** | **✓ concluída** | Gemini + Groq + OpenAI com split por agente |
 | 1.5 | Suporte a Vertex AI | pendente de decisão | `GeminiVertexProvider` (só se for rodar em prod GCP real) |
 | 2 | Cross-provider por agente | pendente de necessidade | `LLM_PROVIDER_REASONING` ≠ `LLM_PROVIDER_NARRATIVE` |
-| **3** | **Voz (STT/TTS concreto)** | **em andamento** | Groq Whisper (STT) + OpenAI `gpt-4o-mini-tts` (TTS) substituem o stub; toggle no frontend; sincronia texto+voz no nível de frase (ADR-046, ADR-047, ADR-048, ADR-049) |
+| **3** | **Voz (STT/TTS concreto)** | **✓ concluída** | Groq Whisper (STT) + OpenAI `gpt-4o-mini-tts` (TTS) substituem o stub; toggle no frontend; sincronia texto+voz no nível de frase (ADR-046, ADR-047, ADR-048, ADR-049) |
 | 4 | Grupo de personagens | futura | Party de 3-4 personagens controlada pelo jogador |
 | 5 | Criação de personagem | futura | Escolha de raça/classe/atributos |
 | 6 | Descanso e recuperação | futura | Acampar, recuperar HP, repreparar magias |
@@ -127,7 +127,7 @@ A motivação prática (Referee com structured output robusto + Narrator com str
 
 ---
 
-## Fase 3 — Voz STT/TTS concreto (em andamento)
+## Fase 3 — Voz STT/TTS concreto (✓ concluída)
 
 **Objetivo.** Substituir o stub de voz da v1 (ADR-014) por implementações reais: STT com Groq Whisper (`whisper-large-v3-turbo`) e TTS com OpenAI (`gpt-4o-mini-tts`). Adicionar toggle de narração falada no frontend (persistido em localStorage, default off). Implementar sincronia texto+voz no nível de **frase**, orquestrada pelo backend (a voz acompanha o texto chunked do Narrator com offset de ~1-2s na primeira frase, depois empata).
 
@@ -135,25 +135,29 @@ A motivação prática (Referee com structured output robusto + Narrator com str
 - **ADR-046** — Promoção desta fase. Ver `DECISOES.md`.
 - **ADR-047** — Providers concretos de voz e separação `SttProvider` × `TtsProvider`. TTS local descartado por princípio de portabilidade.
 - **ADR-048** — Sincronia texto+voz no nível de frase, backend orquestra. Karaokê palavra-a-palavra explicitamente descartado por custo de complexidade e por conflito com a estética editorial do projeto.
-- **ADR-049** — Toggle TTS no frontend (`localStorage`, default off, header da zona play). Mecanismo de voz configurável via env (`OPENAI_TTS_VOICE`); valor default escolhido após teste de amostras das 5 vozes do gpt-4o-mini-tts.
+- **ADR-049** — Toggle TTS no frontend (`localStorage`, default off, header da zona play). Mecanismo de voz configurável via env (`OPENAI_TTS_VOICE`); valor default `echo` escolhido após teste de amostras das 5 vozes do gpt-4o-mini-tts.
 
 **Estrutura em blocos.**
 
-- **Bloco 1 — Refactor de providers + STT real (Groq Whisper).** Settings, separação `stt.py`/`tts.py`, `GroqWhisperProvider`, endpoint `/voice/stt` real, testes.
-- **Bloco 2 — TTS real (OpenAI) + toggle no frontend.** `OpenAiTtsProvider`, script de amostras das 5 vozes, hook `useTtsToggle`, `TtsToggle`, hook `useAudioQueue`, integração turno-inteiro-em-um-áudio.
-- **Bloco 3 — Sincronia de frase (backend orquestra).** `SentenceBuffer`, `audio_sentence` no SSE, `tts_enabled` na request, frontend enfileira por índice, falha por frase não corrompe o turno.
-- **Bloco 4 — Documentação e fechamento.** ARQUITETURA §7/§12.6, PROVIDERS.md seção "Voz", README, refinamento das skills.
+- **Bloco 1 — Refactor de providers + STT real (Groq Whisper).** ✓ Settings, separação `stt.py`/`tts.py`, `GroqWhisperProvider`, endpoint `/voice/stt` real, testes.
+- **Bloco 2 — TTS real (OpenAI) + toggle no frontend.** ✓ `OpenAiTtsProvider`, script de amostras das 5 vozes (voz `echo` escolhida), hook `useTtsToggle`, `TtsToggle`, hook `useAudioQueue`, integração turno-inteiro-em-um-áudio.
+- **Bloco 3 — Sincronia de frase (backend orquestra).** ✓ `SentenceBuffer`, `audio_sentence` no SSE, `tts_enabled` na request, frontend enfileira por índice, falha por frase não corrompe o turno.
+- **Bloco 3.X (pós-smoke) — Fix do replay duplicado.** ✓ Fix A removeu o ramo `elif text in yielded` morto do `_stream_agent_text` que descartava deltas curtos legítimos (bug antigo da Fase 1 da v1, revelado pela voz: olho completava no frontend, ouvido não). Fix B adicionou dedupe de frase com exceção adjacente em `_stream_with_audio` como defesa em profundidade contra cumulativo gigante. Fix da fila de áudio entre turnos.
+- **Bloco 4 — Documentação e fechamento.** ✓ ARQUITETURA §7/§12.6, PROVIDERS.md seção "Voz", README, refinamento das skills.
 
 **Critério de fase concluída** (Definition of Done):
-- [ ] STT real funcionando: jogador grava voz no botão, texto reconhecido aparece no input.
-- [ ] Toggle TTS visível e persistente; default off.
-- [ ] Com toggle ON, narração sai falada em PT-BR sincronizada por frase com o texto.
-- [ ] Com toggle OFF, zero chamadas a `/voice/tts` (custo zero).
-- [ ] Falha de áudio (STT ou TTS) não corrompe estado e não consome o turno indevidamente.
-- [ ] `docker compose up` sobe tudo idêntico em local e VPS, sem dependência GPU.
-- [ ] Nenhuma chave de API circula pelo frontend.
-- [ ] ADRs 046, 047, 048, 049 registrados.
-- [ ] PRD/ARQUITETURA/PROVIDERS/PLANO_V2 atualizados.
+- [x] STT real funcionando: jogador grava voz no botão, texto reconhecido aparece no input.
+- [x] Toggle TTS visível e persistente; default off.
+- [x] Com toggle ON, narração sai falada em PT-BR sincronizada por frase com o texto.
+- [x] Com toggle OFF, zero chamadas a `/voice/tts` (custo zero).
+- [x] Falha de áudio (STT ou TTS) não corrompe estado e não consome o turno indevidamente.
+- [x] `docker compose up` sobe tudo idêntico em local e VPS, sem dependência GPU.
+- [x] Nenhuma chave de API circula pelo frontend.
+- [x] ADRs 046, 047, 048, 049 registrados.
+- [x] ARQUITETURA/PROVIDERS/PLANO_V2 atualizados.
+
+**Aprendizados que ficaram registrados como dívida ou follow-up.**
+- Bug do Referee descoberto durante smokes da fase voz (campanha `2481344a`, turno 3): RefereeAgent classifica ações pacíficas/de retirada como Intimidação quando o contexto recente é de combate. Não é regressão da voz; bug antigo de viés do `state_summary`. Endereçado em fase posterior — ver memória `project_referee_bug_pendente.md` e ADR-021/PRD §11 (item pós-Fase 3 a definir).
 
 ---
 
