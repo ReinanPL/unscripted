@@ -114,11 +114,18 @@
 - name: desculpa_pos_combate
   action: "Em seguida eu me desculpo e saio da taverna."
   state_summary: |
-    Personagem: Guerreiro, HP 8/12. Localização: taverna_interior — Taverna do Javali Pálido.
-    NPCs presentes: Bardo.
-    Histórico (turnos anteriores, NÃO é a ação a julgar):
-      Turno 1 — Ação do jogador: "Olho ao redor da taverna." Resultado: você nota o bardo cantando.
-      Turno 2 — Ação do jogador: "Soco o bardo no rosto." Resultado: o bardo cambaleia, ferido e furioso.
+    ## Estado presente
+    - Personagem: Guerreiro, nível 1, HP 8/12
+    - Localização: taverna_interior — Taverna do Javali Pálido
+    - NPCs presentes: Bardo
+
+    ## Histórico recente (passado — NÃO é a ação a julgar)
+    - Turno 1:
+      - Ação anterior do jogador: Olho ao redor da taverna.
+      - Narração anterior: Você nota o bardo cantando no canto.
+    - Turno 2:
+      - Ação anterior do jogador: Soco o bardo no rosto.
+      - Narração anterior: O bardo cambaleia, ferido e furioso.
   rules_context: "Persuasão — reparar uma ofensa com palavras. Em contexto hostil, o alvo pode recusar."
   expected:
     precisa_rolagem: false
@@ -129,10 +136,17 @@
 - name: examinar_pos_combate
   action: "Olho ao redor com calma para entender o que aconteceu."
   state_summary: |
-    Personagem: Paladino, HP 10/14. Localização: clareira_dos_bandidos.
-    Histórico (turnos anteriores, NÃO é a ação a julgar):
-      Turno 1 — Ação do jogador: "Ataco o bandido com a espada." Resultado: o bandido cai ferido.
-      Turno 2 — Ação do jogador: "Disparo a flecha no segundo bandido." Resultado: você acerta o ombro dele.
+    ## Estado presente
+    - Personagem: Paladino, nível 1, HP 10/14
+    - Localização: clareira_dos_bandidos — Clareira
+
+    ## Histórico recente (passado — NÃO é a ação a julgar)
+    - Turno 1:
+      - Ação anterior do jogador: Ataco o bandido com a espada.
+      - Narração anterior: O bandido cai ferido no chão.
+    - Turno 2:
+      - Ação anterior do jogador: Disparo a flecha no segundo bandido.
+      - Narração anterior: Você acerta o ombro dele e ele recua sangrando.
   rules_context: "Percepção — observar o ambiente sem pressa."
   expected:
     precisa_rolagem: true
