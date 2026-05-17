@@ -172,15 +172,37 @@ def _check_case(case: dict[str, Any], ruling: Ruling) -> list[str]:
 
     residual_kws: list[str] = expected.get("intencao_residual_keywords") or []
     if residual_kws:
+        # Dois caminhos válidos (ADR-051): (a) residual preenchido com a
+        # intenção pendente; (b) Ruling já processou a 2ª intenção dentro
+        # da própria consequência (ex.: new_location, events_occurred).
+        # Falha só quando NEM uma nem outra cobre a intenção.
         residual = ruling.intencao_residual or ""
         residual_norm = _strip_accents(residual.lower())
-        if not residual:
+        residual_match = bool(residual) and any(
+            _strip_accents(k.lower()) in residual_norm for k in residual_kws
+        )
+
+        cons = (
+            ruling.consequencia
+            or ruling.consequencia_sucesso
+            or ruling.consequencia_falha
+        )
+        consequence_text = ""
+        if cons is not None:
+            parts = list(cons.events_occurred)
+            if cons.new_location is not None:
+                parts.append(cons.new_location.id)
+                parts.append(cons.new_location.name)
+            consequence_text = _strip_accents(" ".join(parts).lower())
+        consequence_match = any(
+            _strip_accents(k.lower()) in consequence_text for k in residual_kws
+        )
+
+        if not (residual_match or consequence_match):
             failures.append(
-                f"intencao_residual ausente — esperado conter uma de {residual_kws}"
-            )
-        elif not any(_strip_accents(k.lower()) in residual_norm for k in residual_kws):
-            failures.append(
-                f"intencao_residual {residual!r} não contém nenhuma de {residual_kws}"
+                f"intencao_residual ausente e consequência não cobre a "
+                f"intenção secundária — esperado conter uma de {residual_kws}; "
+                f"residual={residual!r}, consequência={consequence_text!r}"
             )
     if expected.get("intencao_residual_ausente") and ruling.intencao_residual:
         failures.append(

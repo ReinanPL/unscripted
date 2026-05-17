@@ -9,11 +9,15 @@
 #     match exato de string.
 #   - `dificuldade_min` / `dificuldade_max` — faixa aceitável
 #   - `consequencia_*: true` — só verifica presença (não conteúdo)
-#   - `intencao_residual_keywords` — quando presente, exige que o
-#     campo `intencao_residual` do Ruling exista e contenha pelo menos
-#     uma das palavras (case-insensitive, sem acento). Usado pelos
-#     casos do Bug 2 (ADR-051): jogador declara duas intenções, Referee
-#     resolve a principal e registra a secundária para o Narrator.
+#   - `intencao_residual_keywords` — quando presente, exige que a 2ª
+#     intenção esteja coberta por UMA de duas vias (ADR-051):
+#       (a) campo `intencao_residual` do Ruling preenchido com pelo
+#           menos uma das keywords (case-insensitive, sem acento), OU
+#       (b) o próprio Ruling já processou a 2ª intenção dentro da
+#           consequência aplicada (ex.: `new_location` muda para o
+#           destino implícito, `events_occurred` contém a keyword).
+#     Falha só quando NEM uma nem outra cobre a intenção — aí o jogador
+#     foi ignorado em silêncio.
 #   - `intencao_residual_ausente: true` — exige que o campo seja `None`.
 #     Usado em casos de intenção única para confirmar que o paliativo
 #     não dispara falso-positivo.
