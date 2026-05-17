@@ -30,6 +30,13 @@ class Ruling(BaseModel):
 
     `npc_to_react` é o id do NPC presente na cena que deve reagir após a
     narração principal. `None` se nenhum NPC reage neste turno.
+
+    `intencao_residual` (ADR-051) é texto curto descrevendo uma intenção
+    secundária do jogador que não foi processada neste turno — quando o
+    jogador declara mais de uma ação numa só frase, o Referee resolve a
+    principal e registra aqui o que ficou pendente. O Narrator recebe
+    esse texto como instrução para reconhecer abertamente a intenção
+    não-processada. `None` quando há intenção única (caso normal).
     """
 
     precisa_rolagem: bool
@@ -41,6 +48,7 @@ class Ruling(BaseModel):
     consequencia_sucesso: ConsequenceProposal | None = None
     consequencia_falha: ConsequenceProposal | None = None
     npc_to_react: str | None = None
+    intencao_residual: str | None = None
 
     @model_validator(mode="after")
     def _validate_modos(self) -> Ruling:
