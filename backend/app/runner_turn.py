@@ -90,25 +90,46 @@ def _format_snippets(snippets: list[RetrievalSnippet]) -> str:
 
 
 def _state_summary(state: GameState, chapter: Chapter | None) -> str:
-    parts = [
-        f"Personagem: {state.character.name} ({state.character.character_class}), "
+    """Resumo estruturado para o Referee (ADR-050).
+
+    Duas seções separadas e rotuladas:
+      - "Estado presente": cena atual (HP, localização, inventário, NPCs).
+        É o que decide trivialidade da ação atual.
+      - "Histórico recente (passado — NÃO é a ação a julgar)": últimos
+        turnos, com player_action e narração em campos distintos (sem o
+        "→" que misturava papéis em string corrida).
+
+    A separação evita que o tom de turnos anteriores enviese o ruling
+    da ação atual.
+    """
+    presente = [
+        "## Estado presente",
+        f"- Personagem: {state.character.name} ({state.character.character_class}), "
         f"nível {state.character.level}, HP {state.character.hp_current}/{state.character.hp_max}",
-        f"Localização: {state.location.id} — {state.location.name}",
+        f"- Localização: {state.location.id} — {state.location.name}",
     ]
     if state.inventory:
         items = ", ".join(f"{i.name} x{i.quantity}" for i in state.inventory)
-        parts.append(f"Inventário: {items}")
+        presente.append(f"- Inventário: {items}")
     if state.flags.objectives_completed:
-        parts.append("Objetivos concluídos: " + ", ".join(state.flags.objectives_completed))
+        presente.append("- Objetivos concluídos: " + ", ".join(state.flags.objectives_completed))
     if chapter is not None:
         scene = next((s for s in chapter.scenes if s.id == state.location.id), None)
         if scene and scene.present:
-            parts.append("NPCs presentes: " + ", ".join(scene.present))
+            presente.append("- NPCs presentes: " + ", ".join(scene.present))
+
+    sections = ["\n".join(presente)]
+
     if state.history:
         last = state.history[-2:]
-        recap = "; ".join(f"[{h.turn}] {h.player_action} → {h.narration[:80]}..." for h in last)
-        parts.append("Últimos turnos: " + recap)
-    return "\n".join(parts)
+        historico = ["## Histórico recente (passado — NÃO é a ação a julgar)"]
+        for h in last:
+            historico.append(f"- Turno {h.turn}:")
+            historico.append(f"  - Ação anterior do jogador: {h.player_action}")
+            historico.append(f"  - Narração anterior: {h.narration[:120]}...")
+        sections.append("\n".join(historico))
+
+    return "\n\n".join(sections)
 
 
 def _format_npc_persona(npc: NPC) -> str:
