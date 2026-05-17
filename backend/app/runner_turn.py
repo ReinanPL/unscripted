@@ -180,19 +180,31 @@ async def _stream_agent_text(
     único event final — o cliente percebe o texto chegando "de vez".
     Com SSE, cada delta vira um yield e a cadência editorial volta.
 
-    Alguns adaptadores (LiteLlm + OpenAI) emitem três coisas misturadas
-    no mesmo stream: deltas puros ("Você", " se", " mantém"), eventos
-    cumulativos ("Você se mantém"), e — no fim — um event final com o
-    texto completo acumulado. Para não duplicar, mantemos `yielded`
-    com tudo que já saiu pelo generator e decidimos por caso:
-      - text começa com yielded  → emite só o sufixo novo.
-      - text já está em yielded  → final acumulado redundante, ignora.
-      - caso contrário           → delta puro, emite e acumula.
+    Dois ramos só:
+      - `text.startswith(yielded)` → evento cumulativo crescente (raro
+        com LiteLlm+OpenAI; comum em outros adaptadores). Emite só o
+        sufixo novo.
+      - caso contrário → delta puro. Emite e acumula.
 
-    Sobrescrever `seen = text` (versão anterior) perdia o histórico do
-    que já tinha sido emitido — quando o event final acumulado chegava,
-    o `seen` era só o último delta, falhava o startswith e o texto
-    inteiro era re-emitido como duplicata. O `yielded` corrige isso.
+    A versão anterior tinha um terceiro ramo `elif text in yielded:
+    continue` como suposta proteção contra "evento final cumulativo
+    redundante". A medição mostrou que esse ramo:
+      - disparou 102 vezes em um turno de ~256 events;
+      - em 100% dos casos `text != yielded` E `text` não era sufixo
+        cumulativo: eram deltas curtos legítimos (" e ", " de ",
+        " ao ", " um ") cujas letras já apareciam em outras palavras
+        do acumulado;
+      - resultado: descartava conteúdo bom. Sem TTS o olho completava
+        o texto e o bug passava despercebido (~12% dos chars perdidos
+        no buffer interno; o frontend mostrava chunked junto). Com
+        TTS, o `SentenceBuffer` lia frases corrompidas para sintetizar
+        ("As paredes madeira" sem o "de") — surgiu como "comendo
+        palavras" no áudio.
+      - Bug existe desde a Fase 1 da v1; a voz revelou. Removido.
+
+    Defesa em profundidade contra o cenário oposto (evento final
+    cumulativo gigante caindo no `else` e duplicando frases) vive no
+    `_stream_with_audio` via dedupe `(posição, frase)`.
     """
     msg = types.Content(role="user", parts=[types.Part(text=trigger)])
     run_config = RunConfig(streaming_mode=StreamingMode.SSE)
@@ -210,13 +222,15 @@ async def _stream_agent_text(
             if not text:
                 continue
             if text.startswith(yielded):
+                # Cumulativo crescente do ADK (raro com LiteLlm+OpenAI mas
+                # acontece em alguns providers): emite só o sufixo novo.
                 delta = text[len(yielded) :]
                 if delta:
                     yield delta
                     yielded += delta
-            elif text in yielded:
-                continue
             else:
+                # Delta puro. Caminho dominante com LiteLlm+OpenAI: cada
+                # evento traz só o próximo pedaço de texto. Emite direto.
                 yield text
                 yielded += text
 
