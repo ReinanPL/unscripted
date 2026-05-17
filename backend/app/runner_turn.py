@@ -534,6 +534,7 @@ async def process_turn(
                     "ruling": ruling.model_dump_json(),
                     "roll_outcome": roll_outcome.model_dump_json() if roll_outcome else "",
                     "consequence_applied": consequence_applied.model_dump_json(),
+                    "intencao_residual": ruling.intencao_residual or "",
                 },
             )
             narrator_stats: StreamStats = {
@@ -634,6 +635,7 @@ async def process_turn(
         npc_id=npc_id_used,
         error=npc_error,
         tts_errors=tts_errors_acc,
+        intencao_residual=ruling.intencao_residual,
     )
     try:
         await _persist_turn(campaign_id, state, trace, text, narration_text, turn_number)

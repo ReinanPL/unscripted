@@ -109,7 +109,12 @@ async def create_adk_session(campaign_id: str) -> None:
         app_name=APP_NAME,
         user_id=DEFAULT_USER_ID,
         session_id=campaign_id,
-        state={"lore_context": "", "rules_context": "", "state_summary": ""},
+        state={
+            "lore_context": "",
+            "rules_context": "",
+            "state_summary": "",
+            "intencao_residual": "",
+        },
     )
 
 

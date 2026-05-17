@@ -66,6 +66,25 @@ Sobre `npc_to_react`:
 naturalmente reagiria a esta ação. `null` se nenhum reage (ex.: jogador \
 explora sozinho, ou só examina algo).
 
+Sobre `intencao_residual`:
+- **Quando preencher.** Se a ação do jogador declara **duas ou mais \
+intenções distintas** numa só frase — duas ações que normalmente seriam \
+turnos separados — você arbitra **a principal** (a primeira, ou a mais \
+imediata) e descreve aqui, em **texto curto (1 frase)**, a intenção \
+secundária que ficou pendente. Exemplos do que conta como duas intenções:
+  - "Me desculpo e saio da taverna" → social + mudança de localização.
+  - "Pego a chave e abro a porta dos fundos" → coleta + uso.
+  - "Ataco o orc e grito por ajuda" → combate + comunicação.
+- **Quando deixar `null`.** Caso normal — uma intenção só. Também `null` \
+quando duas frases compõem **uma intenção única** (ex.: "Saio da taverna \
+e vou em direção à praça" é apenas mudança de localização). E quando o \
+segundo verbo é **mera consequência** do primeiro (ex.: "Empurro a porta \
+e entro" — entrar é resultado de empurrar, não outra intenção). Use bom \
+senso: residual marca o que o jogador quis fazer e **não foi processado**.
+- **Formato.** Frase imperativa curta, na voz do jogador, descrevendo a \
+ação pendente. Ex.: "sair da taverna", "abrir a porta dos fundos", \
+"gritar por ajuda". Não inclua a ação principal.
+
 ## Contexto de fundo (NÃO é o que você está julgando)
 
 Regras recuperadas do SRD (top-k por similaridade com a ação):

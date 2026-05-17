@@ -96,6 +96,7 @@ class TurnTrace(BaseModel):
     npc_id: str | None = None
     error: str | None = None
     tts_errors: list[str] = Field(default_factory=list)
+    intencao_residual: str | None = None
 
 
 TurnEventType = Literal[

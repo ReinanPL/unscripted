@@ -200,6 +200,7 @@ export interface Ruling {
   consequencia_sucesso?: ConsequenceProposal | null;
   consequencia_falha?: ConsequenceProposal | null;
   npc_to_react?: string | null;
+  intencao_residual?: string | null;
 }
 
 export interface RetrievalSnippet {
@@ -222,4 +223,5 @@ export interface TurnTrace {
   npc_id?: string | null;
   error?: string | null;
   tts_errors: string[];
+  intencao_residual?: string | null;
 }
