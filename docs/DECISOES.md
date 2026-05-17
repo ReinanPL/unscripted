@@ -1111,6 +1111,10 @@ A OpenAI oferece 11+ vozes em `gpt-4o-mini-tts` (alloy, ash, ballad, coral, echo
 - **Implicação para o eval set.** O caso `desculpa_pos_combate` aceita dois caminhos válidos (residual preenchido **OU** consequência cobrindo a 2ª intenção); falha só quando nem um nem outro cobre — aí houve silêncio.
 - **Detector cabe no próprio Referee, sem agente novo.** Tentar um `intent_splitter` dedicado seria começar a montar a infra de ação composta (2C/2D) — fora de escopo deste ADR.
 
+**Taxa de silêncio medida (`scripts/measure_residual_fill_rate.py`).** 21 rodadas nos casos multi-intenção do eval set, 3 providers: **0/21 silêncio (0.0%)**. OpenAI gpt-4o-mini chega via consequência em 8/10 e via residual em 2/10. Gemini 2.5 flash chega via residual em 9/10 e via consequência em 1/10. Os caminhos são complementares — o paliativo é robusto porque não depende de um só mecanismo. Conclusão: o motivo do ADR-051 está coberto pelos providers medidos.
+
+**Caveat conhecido — Groq llama-3.3-70b.** A medição teve **apenas 1 datapoint válido** com Groq (TPD diário de 100K tokens esgotou durante a rodada — eval set + medição consumiram a quota). Nesse 1 datapoint, o paliativo cumpriu (residual preenchido). **Mas houve um caso anterior ambíguo** durante a rodada do eval set com Groq: o `desculpa_pos_combate` retornou `consequencia=None` e `intencao_residual=None` — possivelmente silêncio real, possivelmente consequência mínima não capturada pelo log. Não reproduzido por limite de quota. **Se reincidir em jogo real com Groq, reabrir** — rodar `scripts/measure_residual_fill_rate.py` com `LLM_PROVIDER=groq` quando o TPD resetar fecha esse caveat. Limite documentado, não esquecido.
+
 **Consequências.**
 
 - Schema do `Ruling` ganha um campo opcional; nenhuma quebra de contrato (default `null`, validador inalterado).
