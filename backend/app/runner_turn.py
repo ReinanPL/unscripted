@@ -273,13 +273,20 @@ async def _stream_with_audio(
     tts_errors: list[str] = []
     text_acc = ""
     # Defesa em profundidade contra o cenário do "boom" (evento final
-    # cumulativo gigante que cai no `else` de `_stream_agent_text` e
-    # acaba sendo reprocessado pelo SentenceBuffer, gerando as MESMAS
-    # frases nas MESMAS posições do buffer cumulativo). Chave = (posição
-    # ordinal, frase normalizada). Mesma frase em posição diferente
-    # ("Silêncio. Silêncio.") tem chaves distintas e sai normalmente.
-    already_synthed: set[tuple[int, str]] = set()
-    sentence_position = 0
+    # cumulativo gigante cai no `else` de `_stream_agent_text` e o
+    # SentenceBuffer detecta as mesmas frases que já saíram via deltas,
+    # gerando duplicatas no TTS).
+    #
+    # Chave = frase normalizada. Para preservar repetição legítima
+    # adjacente ("Silêncio. Silêncio."), `last_dispatched_norm` guarda
+    # a última frase emitida — se a frase atual é igual à anterior
+    # imediatamente, passa direto. Frases iguais não-adjacentes
+    # (reprocesso do cumulativo gigante) são skipadas. Trade-off
+    # consciente: narração com frase legitimamente repetida não-adjacente
+    # ("Silêncio. ... Silêncio." com texto entre) é caso raro e fica
+    # descartada — preferimos isso a deixar o boom passar.
+    already_synthed: set[str] = set()
+    last_dispatched_norm = ""
 
     async def _release_in_order() -> None:
         nonlocal next_to_emit
@@ -312,18 +319,21 @@ async def _stream_with_audio(
         await _release_in_order()
 
     def _dispatch_synth(sentence: str) -> None:
-        """Aplica dedupe `(posição, frase)` antes de criar a task de TTS.
+        """Aplica dedupe antes de criar a task de TTS.
 
-        Frase duplicada na mesma posição (cenário do "boom") é skipada
-        — não incrementa `next_to_assign` nem cria task. Frase repetida
-        em outra posição (`"Silêncio. Silêncio."` legítimo) sai normal.
+        Skip se a frase já foi vista E não é igual à última emitida.
+        Repetição imediatamente adjacente (mesma frase logo em seguida)
+        é tratada como legítima e passa.
         """
-        nonlocal sentence_position, next_to_assign
-        key = (sentence_position, sentence.strip().lower())
-        sentence_position += 1
-        if key in already_synthed:
+        nonlocal last_dispatched_norm, next_to_assign
+        norm = sentence.strip().lower()
+        if norm in already_synthed and norm != last_dispatched_norm:
+            # Frase já apareceu antes em outro contexto e a anterior
+            # NÃO é a mesma → reprocesso (cumulativo gigante refazendo
+            # o que já saiu pelos deltas). Skip.
             return
-        already_synthed.add(key)
+        already_synthed.add(norm)
+        last_dispatched_norm = norm
         idx = next_to_assign
         next_to_assign += 1
         pending.append(asyncio.create_task(_synth(idx, sentence)))

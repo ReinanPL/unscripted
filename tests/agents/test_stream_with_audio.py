@@ -262,3 +262,137 @@ async def test_reorder_holds_later_audio_until_earlier_ready():
     assert audio_indices == [0, 1]
     # E a frase "dois" tinha terminado primeiro de fato.
     assert completion_order[0] == "Frase dois."
+
+
+# ===================== Dedupe de frase (Fix B) =====================
+#
+# Chave do dedupe = frase normalizada. Frase repetida adjacente (a
+# anterior é IGUAL) passa — narrador escrevendo "Silêncio. Silêncio."
+# é legítimo. Frase já vista antes mas a anterior é DIFERENTE eh
+# tratada como reprocesso do cumulativo gigante e skipada.
+
+
+@pytest.mark.asyncio
+async def test_replayed_sentences_after_other_content_are_skipped():
+    """Cenário do "boom" simulado: três frases distintas saem, depois
+    um chunk reproduz as mesmas três no fim. Como cada repetição vem
+    depois de outra frase diferente, todas batem em "já vista E não-
+    adjacente" → todas as repetições são skipadas.
+    """
+    runner = _FakeRunner(
+        [
+            "Frase A. ",
+            "Frase B. ",
+            "Frase C. ",
+            # Reprocesso (cenário do bug): mesma sequência de novo.
+            "Frase A. Frase B. Frase C. ",
+        ]
+    )
+    tts = _FakeTts()
+    stats = _make_stats()
+    audio_events: list[Any] = []
+    async for ev in _stream_with_audio(
+        runner=runner,  # type: ignore[arg-type]
+        campaign_id="c",
+        trigger="x",
+        text_event_type="narration_chunk",
+        npc_id=None,
+        tts_provider=tts,  # type: ignore[arg-type]
+        tts_voice="echo",
+        sentence_index_start=0,
+        stats=stats,
+    ):
+        if ev.type == "audio_sentence":
+            audio_events.append(ev)
+    # Só as 3 originais saem; o reprocesso inteiro é skipado.
+    assert [e.sentence_index for e in audio_events] == [0, 1, 2]
+    assert tts.calls == ["Frase A.", "Frase B.", "Frase C."]
+
+
+@pytest.mark.asyncio
+async def test_adjacent_repetition_is_allowed():
+    """`"Silêncio. Silêncio."` — repetição imediatamente adjacente é
+    caso legítimo do narrador. Ambas saem.
+    """
+    runner = _FakeRunner(["Silêncio. Silêncio. "])
+    tts = _FakeTts()
+    stats = _make_stats()
+    audio_events: list[Any] = []
+    async for ev in _stream_with_audio(
+        runner=runner,  # type: ignore[arg-type]
+        campaign_id="c",
+        trigger="x",
+        text_event_type="narration_chunk",
+        npc_id=None,
+        tts_provider=tts,  # type: ignore[arg-type]
+        tts_voice="echo",
+        sentence_index_start=0,
+        stats=stats,
+    ):
+        if ev.type == "audio_sentence":
+            audio_events.append(ev)
+    # Repetição adjacente legítima → ambas saem.
+    assert [e.sentence_index for e in audio_events] == [0, 1]
+    assert tts.calls == ["Silêncio.", "Silêncio."]
+
+
+@pytest.mark.asyncio
+async def test_dedupe_is_case_insensitive():
+    """Variações de caixa não enganam o dedupe: "Frase." e "FRASE."
+    são consideradas a mesma frase.
+    """
+    runner = _FakeRunner(
+        [
+            "Frase. ",
+            "Outra coisa. ",
+            "FRASE. ",  # repetição não-adjacente, case diferente
+        ]
+    )
+    tts = _FakeTts()
+    stats = _make_stats()
+    audio_events: list[Any] = []
+    async for ev in _stream_with_audio(
+        runner=runner,  # type: ignore[arg-type]
+        campaign_id="c",
+        trigger="x",
+        text_event_type="narration_chunk",
+        npc_id=None,
+        tts_provider=tts,  # type: ignore[arg-type]
+        tts_voice="echo",
+        sentence_index_start=0,
+        stats=stats,
+    ):
+        if ev.type == "audio_sentence":
+            audio_events.append(ev)
+    # "FRASE." é skipada porque "frase." já está no set e a anterior
+    # ("Outra coisa.") não é a mesma → reprocesso.
+    assert [e.sentence_index for e in audio_events] == [0, 1]
+    assert tts.calls == ["Frase.", "Outra coisa."]
+
+
+@pytest.mark.asyncio
+async def test_repeated_sentence_across_turns_is_allowed():
+    """Cada chamada de `_stream_with_audio` tem seu próprio
+    `already_synthed` — frases iguais em turnos distintos saem
+    normalmente em cada turno.
+    """
+    for _ in range(2):
+        runner = _FakeRunner(["Frase. "])
+        tts = _FakeTts()
+        stats = _make_stats()
+        audio_events: list[Any] = []
+        async for ev in _stream_with_audio(
+            runner=runner,  # type: ignore[arg-type]
+            campaign_id="c",
+            trigger="x",
+            text_event_type="narration_chunk",
+            npc_id=None,
+            tts_provider=tts,  # type: ignore[arg-type]
+            tts_voice="echo",
+            sentence_index_start=0,
+            stats=stats,
+        ):
+            if ev.type == "audio_sentence":
+                audio_events.append(ev)
+        assert [e.sentence_index for e in audio_events] == [0]
+        assert tts.calls == ["Frase."]
