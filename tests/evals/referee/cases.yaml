@@ -9,6 +9,14 @@
 #     match exato de string.
 #   - `dificuldade_min` / `dificuldade_max` — faixa aceitável
 #   - `consequencia_*: true` — só verifica presença (não conteúdo)
+#   - `intencao_residual_keywords` — quando presente, exige que o
+#     campo `intencao_residual` do Ruling exista e contenha pelo menos
+#     uma das palavras (case-insensitive, sem acento). Usado pelos
+#     casos do Bug 2 (ADR-051): jogador declara duas intenções, Referee
+#     resolve a principal e registra a secundária para o Narrator.
+#   - `intencao_residual_ausente: true` — exige que o campo seja `None`.
+#     Usado em casos de intenção única para confirmar que o paliativo
+#     não dispara falso-positivo.
 
 - name: emboscada_contra_veterano
   action: "Armo uma emboscada para o cavaleiro Joren na trilha estreita do bosque."
@@ -98,3 +106,68 @@
     dificuldade_max: 15
     consequencia_sucesso: true
     consequencia_falha: true
+
+# === Bug 1 (viés de contexto) — ADR-050 ===
+# Histórico recente é de combate; a ação atual é claramente pacífica.
+# O Referee deve julgar a AÇÃO ATUAL, não o tom dos turnos anteriores.
+
+- name: desculpa_pos_combate
+  action: "Em seguida eu me desculpo e saio da taverna."
+  state_summary: |
+    Personagem: Guerreiro, HP 8/12. Localização: taverna_interior — Taverna do Javali Pálido.
+    NPCs presentes: Bardo.
+    Histórico (turnos anteriores, NÃO é a ação a julgar):
+      Turno 1 — Ação do jogador: "Olho ao redor da taverna." Resultado: você nota o bardo cantando.
+      Turno 2 — Ação do jogador: "Soco o bardo no rosto." Resultado: o bardo cambaleia, ferido e furioso.
+  rules_context: "Persuasão — reparar uma ofensa com palavras. Em contexto hostil, o alvo pode recusar."
+  expected:
+    precisa_rolagem: false
+    consequencia: true
+    # Bug 2 metade A: a saída ficou pendente — deve aparecer em intencao_residual.
+    intencao_residual_keywords: ["sair", "saio", "taverna", "saída"]
+
+- name: examinar_pos_combate
+  action: "Olho ao redor com calma para entender o que aconteceu."
+  state_summary: |
+    Personagem: Paladino, HP 10/14. Localização: clareira_dos_bandidos.
+    Histórico (turnos anteriores, NÃO é a ação a julgar):
+      Turno 1 — Ação do jogador: "Ataco o bandido com a espada." Resultado: o bandido cai ferido.
+      Turno 2 — Ação do jogador: "Disparo a flecha no segundo bandido." Resultado: você acerta o ombro dele.
+  rules_context: "Percepção — observar o ambiente sem pressa."
+  expected:
+    precisa_rolagem: true
+    pericia_keywords: ["percepção", "perception", "investigação", "investigation"]
+    dificuldade_min: 5
+    dificuldade_max: 15
+    consequencia_sucesso: true
+    consequencia_falha: true
+    intencao_residual_ausente: true
+
+# === Bug 2 metade A (intenção residual) — ADR-051 ===
+# Jogador declara duas intenções numa só frase. Referee resolve a
+# principal e registra a secundária em `intencao_residual`. O Narrator
+# (no Bloco 3) usa esse texto para reconhecer a intenção pendente
+# transparente para o jogador.
+
+- name: multi_intencao_sem_combate
+  action: "Pego a chave da mesa e abro a porta dos fundos."
+  state_summary: |
+    Personagem: Guerreiro, HP 12/12. Localização: sala_dos_fundos — Sala dos fundos.
+    Inventário: tocha x1.
+  rules_context: ""
+  expected:
+    precisa_rolagem: false
+    consequencia: true
+    # Principal: pegar a chave (não-rolagem, items_added). Residual: abrir a porta.
+    intencao_residual_keywords: ["porta", "abrir", "abro", "fundos"]
+
+- name: intencao_unica_nao_acusa_residual
+  action: "Saio da taverna e vou em direção à praça."
+  state_summary: "Personagem: Paladino, HP 14/14. Localização: taverna_interior."
+  rules_context: ""
+  expected:
+    precisa_rolagem: false
+    consequencia: true
+    # "Saio E vou em direção" é uma intenção única (mudar de localização).
+    # O paliativo não deve marcar residual aqui — evita falso-positivo.
+    intencao_residual_ausente: true

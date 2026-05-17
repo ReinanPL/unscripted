@@ -170,6 +170,23 @@ def _check_case(case: dict[str, Any], ruling: Ruling) -> list[str]:
         if expected.get("consequencia") and ruling.consequencia is None:
             failures.append("consequencia ausente (precisa_rolagem=False)")
 
+    residual_kws: list[str] = expected.get("intencao_residual_keywords") or []
+    if residual_kws:
+        residual = ruling.intencao_residual or ""
+        residual_norm = _strip_accents(residual.lower())
+        if not residual:
+            failures.append(
+                f"intencao_residual ausente — esperado conter uma de {residual_kws}"
+            )
+        elif not any(_strip_accents(k.lower()) in residual_norm for k in residual_kws):
+            failures.append(
+                f"intencao_residual {residual!r} não contém nenhuma de {residual_kws}"
+            )
+    if expected.get("intencao_residual_ausente") and ruling.intencao_residual:
+        failures.append(
+            f"intencao_residual deveria ser None, veio {ruling.intencao_residual!r}"
+        )
+
     return failures
 
 
