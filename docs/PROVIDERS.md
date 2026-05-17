@@ -120,9 +120,69 @@ Estimativa baseada em ~2.000 tokens por turno (input rico + output curto do Refe
 
 ---
 
+# Voz — STT e TTS
+
+Entregue na Fase 3 da v2 (ADR-046, ADR-047, ADR-048, ADR-049). Substitui o stub `VoiceProvider` unificado da v1 por dois Protocols independentes — `SttProvider` (`backend/app/providers/stt.py`) e `TtsProvider` (`backend/app/providers/tts.py`), selecionáveis por env separada.
+
+## STT — Groq Whisper (`whisper-large-v3-turbo`)
+
+| Característica | Valor |
+|---|---|
+| Provider default | `STT_PROVIDER=groq` |
+| Modelo default | `whisper-large-v3-turbo` |
+| Custo | **$0** (free tier) |
+| Quota free tier | ~14.4K RPD |
+| Latência típica | ~1s para áudio de ~5-10s |
+| PT-BR | nativo, sem ajustes |
+| Formatos aceitos | webm/opus (MediaRecorder default), mp3, mp4, m4a, ogg, wav, flac |
+| Chave | reaproveita `GROQ_API_KEY` do LLM |
+| Override de modelo | `GROQ_STT_MODEL` no `.env` |
+
+`StubSttProvider` permanece disponível para CI/dev sem chaves (responde com texto vazio). Implementação concreta usa `litellm.atranscription` — mesma camada do split de LLM da Fase 1.
+
+## TTS — OpenAI `gpt-4o-mini-tts`
+
+| Característica | Valor |
+|---|---|
+| Provider default | `TTS_PROVIDER=openai` |
+| Modelo default | `gpt-4o-mini-tts` |
+| Voz default | `echo` (escolhida no Bloco 2 após teste das 5 vozes — ADR-049) |
+| Custo aprox. | ~$0.015 / 1K caracteres → ~$0.001/turno típico |
+| Latência típica | ~1-2s por frase (~100-200 chars) |
+| PT-BR | nativo, sem ajustes |
+| Formato de saída | MP3 (audio/mpeg) |
+| Chave | reaproveita `OPENAI_API_KEY` do LLM |
+| Override de modelo/voz | `OPENAI_TTS_MODEL` e `OPENAI_TTS_VOICE` no `.env` |
+
+Vozes disponíveis testadas: `alloy`, `sage`, `echo`, `coral`, `shimmer`. Script `scripts/sample_tts_voices.py` gera amostras com o `read_aloud` da starting_scene do capítulo 1 para escolha local.
+
+`StubTtsProvider` preservado para CI/dev sem chaves.
+
+## Sincronia texto+voz por frase
+
+Quando `tts_enabled=true` na request `/action`, o backend (`_stream_with_audio` em `runner_turn.py`) detecta fim de frase no stream do Narrator/NPC via `SentenceBuffer` puro (regex `[.!?…]\s+` ou `\n`, com tratamento de decimais, abreviações `Sr./Dr./etc.`, reticências, aspas fechantes). A cada frase fechada, dispara `asyncio.create_task(tts.synthesize(frase))` **em paralelo** ao yield dos chunks de texto. Áudios chegam via evento `audio_sentence` (base64 MP3 + `sentence_index`) no mesmo SSE — reordenação garantida pelo backend (frases ficam no buffer até a anterior estar pronta).
+
+**Custo zero quando off.** Default `tts_enabled=false`. Toggle persiste em `localStorage` no frontend (`unscripted.tts_enabled`). Cada turno com TTS on custa ~$0.001 (gpt-4o-mini-tts × ~10-15 frases).
+
+## TTS local descartado
+
+Coqui, Bark e similares **não entram** na arquitetura do projeto. Razão: quebram a portabilidade do `docker compose up` (ADR-010) — modelos grandes, possivelmente GPU, container pesado. O projeto é multi-ambiente (local + VPS comum) e qualquer dependência além de HTTP arranha esse contrato.
+
+## Limites conhecidos
+
+- **Webm/opus do Chrome** atravessa sem conversão. Safari grava `audio/mp4`; também aceito. Outros browsers caem no fallback `webm` por extensão de filename.
+- **Latência percebida da 1ª frase** depende do quanto o LLM demora pra fechar a primeira frase. Texto inteiro do mestre tem ~10-15 frases; primeira frase típica fecha em 2-5s e o áudio chega em mais 1-2s.
+- **Dedupe defensivo** (ADR-048 + Fix B do pós-smoke): quando o ADK emite um evento final cumulativo gigante que cai no `else` do `_stream_agent_text`, o `_stream_with_audio` evita gerar duplicatas via dedupe de frase com exceção adjacente. Repetição imediata legítima (`"Silêncio. Silêncio."`) passa; repetição não-adjacente é tratada como reprocesso e skipada.
+- **Fila de áudio limpa por turno.** Cada novo turno (`handleSubmit`) chama `audioQueue.clear()` antes de enfileirar — descarta áudios pendentes do turno anterior. Tradeoff aceito: se o jogador clicar AGIR no meio do áudio anterior, o áudio para. Comportamento esperado em UI conversacional.
+
+---
+
 ## Trabalho futuro relacionado a providers
 
-Itens identificados durante a Fase 1 da v2 mas **não executados** — registrados como fases futuras:
+Itens identificados durante a v2 mas **não executados** — registrados como fases futuras:
 
 - **Fase 1.5 — Suporte a Vertex AI** (ver `PLANO_IMPLEMENTACAO_V2.md`). Adicionar `GeminiVertexProvider` na mesma camada de providers, ativável via `LLM_PROVIDER=gemini_vertex`. Pendente de decisão concreta: só faz sentido se o Unscripted for rodar em produção GCP real. Como projeto de portfólio local/VPS, AI Studio basta. Não bloqueia v2.
 - **Fase 2 — Cross-provider por agente** (ver `PLANO_IMPLEMENTACAO_V2.md`). Permitir `LLM_PROVIDER_REASONING=openai` + `LLM_PROVIDER_NARRATIVE=groq` (mistura entre providers). Pendente dos resultados de uso real: só vira necessária se nenhum provider único servir bem em REASONING **e** NARRATIVE. Hoje, OpenAI e Groq cobrem ambos os propósitos satisfatoriamente.
+- **Provider alternativo de TTS** (ElevenLabs, Azure Speech). Pode ser bloco futuro se a qualidade do `gpt-4o-mini-tts` desapontar em uso prolongado. Mesmo padrão: nova classe implementando `TtsProvider`, env var nova, sem tocar no resto.
+- **Voz por NPC.** Vozes diferentes para narrador vs NPCs específicos. O frontend já recebe `npc_id` no `npc_chunk` — basta o backend escolher a voz por NPC. Fora de escopo da Fase Voz; possível bloco futuro.
+- **Cache de TTS por frase.** Frases muito repetidas (`"Você não consegue."`) poderiam ser cacheadas. Otimização de custo, não justifica complexidade hoje.
