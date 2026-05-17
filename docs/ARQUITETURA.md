@@ -181,15 +181,18 @@ A indexação (chunk + embed) de cada corpus acontece **uma vez** (no setup / ao
 
 Interfaces que isolam as dependências externas. Implementações selecionadas por variável de ambiente.
 
-| Provider | Implementação v1 | Implementação v2 (Fase 1) | Ganchos futuros |
+| Provider | Implementação v1 | Implementação v2 (Fases 1 e 3) | Ganchos futuros |
 |---|---|---|---|
 | **LLM** | Gemini 2.5 Flash via AI Studio API | + **Groq** (via LiteLlm) + **OpenAI** (via LiteLlm), com **split por agente** (REASONING / NARRATIVE) — ADR-045 | provider Vertex AI (v3+) |
 | **Embedding** | modelo local no container | (sem mudança) | provider de embedding via API (Google etc.) |
-| **Voz (STT/TTS)** | interface definida; implementação stub na v1 | (sem mudança — fase futura da v2) | implementação concreta na v2 |
+| **STT (Speech-to-Text)** | interface unificada `VoiceProvider` (stub) | `SttProvider` separado + `GroqWhisperProvider` (`whisper-large-v3-turbo` via LiteLlm) — ADR-047 | ElevenLabs/AssemblyAI como fallback |
+| **TTS (Text-to-Speech)** | interface unificada `VoiceProvider` (stub) | `TtsProvider` separado + `OpenAiTtsProvider` (`gpt-4o-mini-tts` via LiteLlm) — ADR-047 | voz por NPC, cache por frase |
 
 Nenhum código de domínio (loop de turno, agentes, RAG) referencia um provedor concreto.
 
 **Sobre o split por agente (v2 Fase 1).** Cada provider declara dois modelos: `*_MODEL_REASONING` (Referee — output estruturado) e `*_MODEL_NARRATIVE` (Narrator/NPC — streaming de prosa). O método `build_model(purpose)` despacha por propósito. Se `NARRATIVE` é omitido, faz fallback para `REASONING` (comportamento single-model preservado para Gemini/OpenAI). No Groq, o split aproveita as quotas distintas — `llama-3.3-70b-versatile` (1K RPD) para REASONING e `llama-3.1-8b-instant` (14.4K RPD) para NARRATIVE — sem gargalo único. Detalhes em `docs/PROVIDERS.md`.
+
+**Sobre a separação STT/TTS (v2 Fase 3).** A `VoiceProvider` unificada da v1 (`transcribe` + `synthesize`) foi dividida em dois Protocols independentes (ADR-047). Razão: STT e TTS são serviços distintos com provedores distintos no mercado — Groq Whisper é o melhor STT free; OpenAI `gpt-4o-mini-tts` tem PT-BR nativo. Interface única forçava metade do espaço a ser stub. Cada propósito tem sua env (`STT_PROVIDER`, `TTS_PROVIDER`), permitindo mix explícito. TTS local descartado: quebraria a portabilidade `docker compose up` (ADR-010), exigiria GPU. Detalhes e custos em `docs/PROVIDERS.md` §"Voz".
 
 ## 8. Modelo de estado do jogo
 
@@ -287,7 +290,18 @@ Conforme PRD §6.6 — toda a riqueza visual vem da reatividade da interface (CS
 - As imagens são ilustração de cena (a taverna, a floresta, o cavaleiro) — **não** são o mapa. O mapa é sempre o grafo SVG derivado dos dados.
 
 ### 12.6. Interface de voz
-A interface de voz (botão de gravar, etc.) existe na v1; a implementação de STT/TTS é v2. Atrás do provider de voz (§7).
+
+**STT (entrada).** O `VoiceButton` ao lado do input usa `MediaRecorder` + `getUserMedia`. O blob webm/opus é enviado em base64 para `POST /voice/stt`. Quando `STT_PROVIDER=groq` (default recomendado), o backend chama Groq Whisper (`whisper-large-v3-turbo`) e devolve o texto. O texto entra no campo de entrada e o jogador revê antes de submeter — não é auto-submit.
+
+**TTS (saída).** Um toggle de "narração falada" no header da zona play (`TtsToggle`) controla o estado, persistido em `localStorage` com chave `unscripted.tts_enabled`. Default off — custo zero quando desligado, nenhuma chamada TTS é feita pelo backend. Quando ligado, o `streamAction` propaga `tts_enabled=true` no body da request `/action`; o backend dispara TTS por frase em paralelo ao stream do Narrator (ver §"Sincronia texto+voz" abaixo) e emite eventos `audio_sentence` no mesmo SSE. O frontend usa `useAudioQueue` para tocar em sequência (FIFO).
+
+**Sincronia texto+voz (ADR-048).** O backend (em `_stream_with_audio`) mantém um `SentenceBuffer` que detecta fim de frase no stream do Narrator. A cada frase fechada, dispara `asyncio.create_task(tts.synthesize(frase))` em **paralelo** ao yield dos chunks de texto. Áudios chegam via `audio_sentence` no mesmo SSE, com reordenação garantida pelo backend (se a frase N fica pronta antes da N-1, espera). Frontend não precisa reordenar — consome FIFO. Karaokê palavra-a-palavra foi explicitamente rejeitado: custo de complexidade (Realtime API ou forced aligner) sem ganho real, e visual de "produto de IA" choca com a identidade editorial do projeto.
+
+**Cadência editorial do texto (`useTypewriter`).** O LLM emite tokens muito rápido (50+/s). Renderizar direto é "saída de chat", não "leitura conduzida". O hook `useTypewriter` no frontend revela texto em ~40 chars/s via `requestAnimationFrame`. Compatível com o `audio_sentence` chegando paralelo — primeira frase de áudio chega ~1-2s depois de aparecer no texto, depois empata.
+
+**Toggle off mid-turno.** Frontend chama `audioQueue.clear()` — interrompe áudio atual e descarta fila. Backend já não gera novas frases (vê `tts_enabled` no turno seguinte).
+
+**Tratamento de falha por frase (ADR-020 estendido).** TTS de uma frase falhar (timeout/erro) **não** corrompe o turno: log estruturado, `audio_sentence` daquela frase não é emitido, próxima frase tenta. Texto não é afetado. `trace.tts_errors` registra a falha.
 
 ## 13. Persistência
 
